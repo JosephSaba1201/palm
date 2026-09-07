@@ -1,0 +1,23 @@
+# Sistema
+.DS_Store
+**/.DS_Store
+
+# Config local de Claude Code (rutas absolutas de esta máquina, sin valor portable)
+.claude/
+
+# Archivos huérfanos/sin usar detectados en limpieza
+assets/sin_usar/
+
+# Respaldos locales del HTML (historial ya vive en git)
+.backups/
+
+# Planos pesados (PDFs, no aportan valor versionados)
+assets/planos/
+
+# Fotos: se migran a Supabase Storage, no viven en el repo
+fotos/
+
+# Excel/PDF fuente con datos financieros sensibles — la información
+# ya vive en Supabase; estos archivos se quedan solo en este Mac.
+PRESUPUESTO Y PAGOS/
+ventas/
