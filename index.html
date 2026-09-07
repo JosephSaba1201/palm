@@ -2380,7 +2380,9 @@ const T1_CORTE_IMG_VER = 2;
 // imagen específica; si se reemplaza la foto, hay que volver a medir y actualizar estos 4 números.
 const T1_GEOM = {
   buildingLeft: 68.4, buildingRight: 927.7,
-  buildingTop: 8.5, buildingBottom: 1000,
+  // top: borde real del techo de RG (px 33 de 1536). bottom: base real de Garden House (px ~1441 de 1536),
+  // NO el borde inferior de la imagen -- de ahí para abajo son palmeras/jardín de la entrada, no piso.
+  buildingTop: 21.5, buildingBottom: 938.6,
   moduloBRight: 493.0, moduloARight_left: 503.0, // franja central angosta entre módulos
 };
 const T1_ROW_UNIT = (T1_GEOM.buildingBottom - T1_GEOM.buildingTop) / 23;
