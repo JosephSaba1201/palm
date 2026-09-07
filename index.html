@@ -63,14 +63,6 @@ a{color:inherit;}
   grid-template-columns:248px 1fr;
   min-height:100vh;
 }
-@media (max-width:860px){
-  .app{grid-template-columns:1fr;}
-  .sidebar{position:fixed;inset:0 auto 0 0;width:248px;transform:translateX(-100%);transition:transform .25s ease;z-index:50;}
-  .sidebar.open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.25);}
-  .menu-toggle{display:flex !important;}
-  .sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(23,21,18,.35);z-index:40;}
-  .sidebar-scrim.show{display:block;}
-}
 
 /* -------- sidebar -------- */
 .sidebar{
@@ -80,6 +72,14 @@ a{color:inherit;}
   padding:26px 18px;
   gap:28px;
   position:sticky;top:0;height:100vh;overflow-y:auto;
+}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr;}
+  .sidebar{position:fixed;inset:0 auto 0 0;width:248px;transform:translateX(-100%);transition:transform .25s ease;z-index:50;}
+  .sidebar.open{transform:translateX(0);box-shadow:0 0 40px rgba(0,0,0,.25);}
+  .menu-toggle{display:flex !important;}
+  .sidebar-scrim{display:none;position:fixed;inset:0;background:rgba(23,21,18,.35);z-index:40;}
+  .sidebar-scrim.show{display:block;}
 }
 .brand{display:flex;flex-direction:column;gap:6px;padding:0 8px;}
 .brand .logo-img{width:118px;height:auto;display:block;}
@@ -302,6 +302,8 @@ td.name{text-align:left;font-weight:600;}
 }
 .tooltip.show{opacity:1;}
 .tooltip b{display:block;font-weight:600;margin-bottom:2px;}
+.t1-corte-row{display:flex;gap:20px;align-items:flex-start;}
+.t1-corte-panel{width:280px;flex:none;}
 
 /* -------- gallery -------- */
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
@@ -411,6 +413,50 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 .report-list{display:flex;flex-direction:column;gap:8px;}
 .report-list .item{display:flex;gap:8px;font-size:12.5px;padding:6px 0;border-bottom:1px solid var(--line);}
 .report-list .item:last-child{border-bottom:none;}
+
+/* ============================= MOBILE REFINEMENTS ============================= */
+@media (max-width:640px){
+  .topbar{padding:14px 16px;gap:8px;}
+  .topbar h1{font-size:18px;}
+  .topbar-right{gap:8px;}
+  .chip{font-size:11px;padding:5px 10px;}
+  .menu-toggle{width:40px;height:40px;}
+  .page{padding:18px 16px 48px;}
+  .card{padding:16px;}
+  .section-title{font-size:17px;margin:28px 0 14px;}
+  .grid{gap:14px;}
+  .kpi-card .value{font-size:28px;}
+  .kpi-card.hero .value{font-size:32px;}
+
+  /* bigger, easier-to-tap navigation */
+  .sidebar{width:82vw;max-width:300px;}
+  .nav-item{padding:13px 10px;font-size:14.5px;gap:13px;}
+  .torre-opt{padding:11px 8px;}
+
+  /* progress rows: stack instead of squeezing 4 fixed columns */
+  .partida-row{grid-template-columns:1fr;row-gap:6px;padding:14px 0;}
+  .partida-row-head{display:none;}
+  .partida-row .pct{text-align:left;}
+
+  /* budget tree: shrink fixed number columns so it fits without scrolling */
+  .budget-row{grid-template-columns:1fr 76px 76px;gap:8px;font-size:11.5px;}
+  .budget-row-3col{grid-template-columns:1fr 76px 86px;}
+  .budget-pctcell{gap:5px;}
+  .progress-track.mini{width:32px;}
+
+  .week-strip{grid-template-columns:repeat(2,1fr);gap:14px;}
+  .compare-wrap{grid-template-columns:1fr;}
+  .compare-wrap .photo-tile .art{height:190px;}
+
+  .qb-row{flex-wrap:wrap;}
+  .qb-nums{width:auto;margin-left:auto;}
+  .qb-items{max-width:100%;}
+
+  .t1-corte-row{flex-direction:column;}
+  .t1-corte-panel{width:100%;}
+
+  .table-wrap,.timeline-strip{-webkit-overflow-scrolling:touch;}
+}
 
 @media print{
   .sidebar,.topbar,.menu-toggle{display:none !important;}
@@ -1009,7 +1055,7 @@ function pageAvance(){
       <span><i style="background:var(--accent)"></i>% Real</span>
       <span><i style="background:var(--ink-900);opacity:.55;width:3px;height:12px;border-radius:1px;"></i>Marca: % Programado</span>
     </div>
-    <div class="partida-row" style="border-bottom:1px solid var(--line-strong);padding-bottom:8px;">
+    <div class="partida-row partida-row-head" style="border-bottom:1px solid var(--line-strong);padding-bottom:8px;">
       <span class="hint">Partida</span><span></span><span class="hint" style="text-align:right;">Avance</span><span class="hint">Estado / fecha</span>
     </div>
     ${s.partidas.map(p=>`
@@ -2451,12 +2497,12 @@ function pageCorteT1(){
     </label>
   </div>
   <p class="foot" style="margin:-6px 0 14px;">Pasa el cursor o toca un departamento para ver su estatus. Clic para ver el detalle.</p>
-  <div style="display:flex;gap:20px;align-items:flex-start;">
+  <div class="t1-corte-row">
     <div id="t1CorteWrap" style="position:relative;flex:1;min-width:0;max-width:640px;border-radius:8px;overflow:hidden;aspect-ratio:1024/1536;">
       <img src="assets/torre1_corte.png?v=${T1_CORTE_IMG_VER}" alt="Corte Torre 1" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;object-fit:cover;">
       <svg viewBox="0 0 ${T1_IMG_W} ${T1_IMG_H}" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;">${svgRects}</svg>
     </div>
-    <div id="t1Panel" class="card" style="width:280px;flex:none;${corteSelDepto?"":"display:none;"}">
+    <div id="t1Panel" class="card t1-corte-panel" style="${corteSelDepto?"":"display:none;"}">
       ${corteSelDepto ? t1PanelContent(rects.find(r=>r.u.d===corteSelDepto)) : ""}
     </div>
   </div>
@@ -2807,7 +2853,7 @@ function renderSidebar(){
     </button>`;
   document.getElementById("primaryNav").innerHTML = NAV_ITEMS.map(n=>`
     <button class="nav-item ${n.id===currentPage?'active':''}" data-page="${n.id}">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("");
-  document.querySelectorAll(".torre-opt[data-torre]").forEach(b=>b.addEventListener("click",()=>{currentScope=b.dataset.torre; coDrill=null; renderAll();}));
+  document.querySelectorAll(".torre-opt[data-torre]").forEach(b=>b.addEventListener("click",()=>{currentScope=b.dataset.torre; coDrill=null; renderAll(); closeSidebarMobile();}));
   document.querySelectorAll(".torre-opt[data-goto]").forEach(b=>b.addEventListener("click",()=>{
     // "Amenidades" no tiene su propio scope de Presupuesto/Avance (SCOPES no lo define) --
     // pero si ya estás en Control de Pagos, quedarse ahí y abrir el desglose pagado
