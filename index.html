@@ -2455,10 +2455,10 @@ function t1BuildRects(){
   return rects;
 }
 const T1_STATUS_STYLE = {
-  vendido:    {fill:"rgba(99,153,34,0.0)",  hoverFill:"rgba(99,153,34,0.28)",  stroke:"#3b6d11"},
-  disponible: {fill:"rgba(120,120,120,0.0)",hoverFill:"rgba(120,120,120,0.28)",stroke:"#5f5e5a"},
-  apartado:   {fill:"rgba(186,117,23,0.0)", hoverFill:"rgba(186,117,23,0.30)", stroke:"#854f0b"},
-  reservado:  {fill:"rgba(186,117,23,0.0)", hoverFill:"rgba(186,117,23,0.30)", stroke:"#854f0b"},
+  vendido:    {fill:"rgba(99,153,34,0.0)",  hatch:null,             stroke:"#3b6d11"},
+  disponible: {fill:"rgba(120,120,120,0.0)",hatch:"t1hatchDisp",    stroke:"#5f5e5a"},
+  apartado:   {fill:"rgba(186,117,23,0.0)", hatch:"t1hatchApart",   stroke:"#854f0b"},
+  reservado:  {fill:"rgba(186,117,23,0.0)", hatch:"t1hatchApart",   stroke:"#854f0b"},
 };
 const T1_STATUS_LABEL = {vendido:"Vendido", disponible:"Disponible", apartado:"Apartado", reservado:"Reservado"};
 function t1FmtPrecio(u){
@@ -2474,6 +2474,17 @@ const T1_FILL_SOLID = {
   apartado:   "#fac775",
   reservado:  "#fac775",
 };
+const T1_HATCH_DEFS = `
+  <defs>
+    <pattern id="t1hatchDisp" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="16" height="16" fill="rgba(140,140,135,0.22)"/>
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#5f5e5a" stroke-width="3.2" stroke-opacity="0.65"/>
+    </pattern>
+    <pattern id="t1hatchApart" width="16" height="16" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="16" height="16" fill="rgba(230,163,74,0.26)"/>
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#854f0b" stroke-width="3.2" stroke-opacity="0.7"/>
+    </pattern>
+  </defs>`;
 function pageCorteT1(){
   const rects = t1BuildRects();
   const svgRects = rects.map(r=>{
@@ -2482,10 +2493,11 @@ function pageCorteT1(){
     const precio = t1FmtPrecio(r.u);
     const tipDetail = r.u.s==="disponible" ? (precio||"") : (r.u.cb||"");
     const fontH = Math.min(r.h*0.16, 11);
+    const fill = st.hatch ? `url(#${st.hatch})` : st.fill;
     const coordLabel = DEBUG_APARTMENT_ZONES ? `<text x="${(r.x+2).toFixed(1)}" y="${(r.y+r.h-3).toFixed(1)}" font-size="6" fill="#ff2d55" style="pointer-events:none;">${r.x.toFixed(0)},${r.y.toFixed(0)} ${r.w.toFixed(0)}x${r.h.toFixed(0)}</text>` : "";
     return `<g class="t1-zone t1-status-${r.u.s}" data-depto="${r.u.d}">
       <title>${r.u.d} · ${r.u.tp||""} ${r.u.m2?r.u.m2+" m²":""} · ${T1_STATUS_LABEL[r.u.s]||r.u.s}${tipDetail?" · "+tipDetail:""}</title>
-      <rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.w.toFixed(1)}" height="${r.h.toFixed(1)}" fill="${st.fill}" stroke="${isSel?"var(--accent, #1a1a1a)":st.stroke}" stroke-width="${isSel?2.5:0.6}" stroke-opacity="${isSel?1:0.4}" style="cursor:pointer;transition:fill .15s;"/>
+      <rect x="${r.x.toFixed(1)}" y="${r.y.toFixed(1)}" width="${r.w.toFixed(1)}" height="${r.h.toFixed(1)}" fill="${fill}" stroke="${isSel?"var(--accent, #1a1a1a)":st.stroke}" stroke-width="${isSel?2.5:0.6}" stroke-opacity="${isSel?1:0.4}" style="cursor:pointer;transition:fill .15s;"/>
       ${DEBUG_APARTMENT_ZONES ? `<text x="${(r.x+r.w/2).toFixed(1)}" y="${(r.y+r.h/2).toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="${fontH.toFixed(1)}" font-weight="600" fill="#2c2c2a" style="pointer-events:none;">${r.u.d}</text>` : ""}
       ${coordLabel}
     </g>`;
@@ -2493,17 +2505,17 @@ function pageCorteT1(){
   return `
   <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
     <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);"><span style="width:12px;height:12px;border-radius:3px;background:${T1_FILL_SOLID.vendido};display:inline-block;"></span>Vendido</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);"><span style="width:12px;height:12px;border-radius:3px;background:${T1_FILL_SOLID.disponible};display:inline-block;"></span>Disponible</div>
-    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);"><span style="width:12px;height:12px;border-radius:3px;background:${T1_FILL_SOLID.apartado};display:inline-block;"></span>Apartado / Reservado</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);"><span style="width:12px;height:12px;border-radius:3px;background:rgba(120,120,120,0.10);background-image:repeating-linear-gradient(45deg,#5f5e5a 0,#5f5e5a 1px,transparent 1px,transparent 5px);display:inline-block;"></span>Disponible</div>
+    <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);"><span style="width:12px;height:12px;border-radius:3px;background:rgba(186,117,23,0.14);background-image:repeating-linear-gradient(45deg,#854f0b 0,#854f0b 1px,transparent 1px,transparent 5px);display:inline-block;"></span>Apartado / Reservado</div>
     <label style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-400);cursor:pointer;">
       <input type="checkbox" id="debugZonesToggle" ${DEBUG_APARTMENT_ZONES?"checked":""}> Ver zonas (para recalibrar)
     </label>
   </div>
-  <p class="foot" style="margin:-6px 0 14px;">Pasa el cursor o toca un departamento para ver su estatus. Clic para ver el detalle.</p>
+  <p class="foot" style="margin:-6px 0 14px;">El rayado marca disponibles y apartados/reservados. Pasa el cursor o toca un departamento para ver su estatus. Clic para ver el detalle completo.</p>
   <div class="t1-corte-row">
     <div id="t1CorteWrap" style="position:relative;flex:1;min-width:0;max-width:640px;border-radius:8px;overflow:hidden;aspect-ratio:1024/1536;">
       <img src="assets/torre1_corte.png?v=${T1_CORTE_IMG_VER}" alt="Corte Torre 1" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;object-fit:cover;">
-      <svg viewBox="0 0 ${T1_IMG_W} ${T1_IMG_H}" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;">${svgRects}</svg>
+      <svg viewBox="0 0 ${T1_IMG_W} ${T1_IMG_H}" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;">${T1_HATCH_DEFS}${svgRects}</svg>
     </div>
     <div id="t1Panel" class="card t1-corte-panel" style="${corteSelDepto?"":"display:none;"}">
       ${corteSelDepto ? t1PanelContent(rects.find(r=>r.u.d===corteSelDepto)) : ""}
@@ -2518,10 +2530,27 @@ function pageCorteT1Embed(){
     ${pageCorteT1()}
   </div>`;
 }
+// Cruza una unidad de INVENTARIO_REAL con su registro de cobranza real en VENTAS_REAL
+// (fuente: ventas/vtas palm agosto 2026.xlsx). Los códigos de unidad no son idénticos entre
+// ambas fuentes (GH01->G01, PH1->"PH 1 (1901)"), de ahí el mapeo por piso.
+function t1FindVenta(u){
+  if(u.t!=="t1" || u.p==="20") return null; // RG (suite garden) no tiene registro de venta propio
+  if(u.p==="19"){
+    const n = u.u.replace("PH","");
+    return VENTAS_REAL.find(v=>v.t===u.t && v.md===u.md && v.niv==="19" && v.u.startsWith(`PH ${n} `));
+  }
+  if(u.p==="PB"){
+    const n = "G"+u.u.replace("GH","");
+    return VENTAS_REAL.find(v=>v.t===u.t && v.md===u.md && v.niv==="PB - 1" && v.u===n);
+  }
+  return VENTAS_REAL.find(v=>v.t===u.t && v.md===u.md && v.niv===u.p && v.u===u.u);
+}
 function t1PanelContent(r){
   if(!r) return "";
   const u = r.u;
   const precio = t1FmtPrecio(u);
+  const venta = t1FindVenta(u);
+  const pct = venta && venta.pv>0 ? 100*venta.pc/venta.pv : null;
   return `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
       <h3 style="margin:0;">${u.d}</h3>
@@ -2533,9 +2562,26 @@ function t1PanelContent(r){
       <div><b>Módulo:</b> ${u.md}</div>
       <div><b>Tipología:</b> ${u.tp||"—"}</div>
       <div><b>Superficie:</b> ${u.m2?u.m2+" m²":"—"}</div>
-      ${precio ? `<div><b>Precio de lista:</b> ${precio}</div>` : (u.cb?`<div><b>Comprador:</b> ${u.cb}</div>`:"")}
+      ${precio ? `<div><b>Precio de lista:</b> ${precio}</div>` : ""}
       ${u.cor ? `<div style="margin-top:6px;">Comisión ya pagada (corregido de Disponible a Vendido)</div>` : ""}
     </div>
+    ${venta ? `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
+      <div class="hint" style="margin-bottom:8px;">Cobranza real</div>
+      <div class="foot" style="line-height:1.9;">
+        ${venta.cli ? `<div><b>Comprador:</b> ${venta.cli}</div>` : ""}
+        ${venta.ase ? `<div><b>Asesor:</b> ${venta.ase}</div>` : ""}
+        ${venta.f ? `<div><b>Fecha de contrato:</b> ${fmtFecha(venta.f)}</div>` : ""}
+        <div><b>Precio de venta:</b> ${fmtMXN(venta.pv)}</div>
+        <div><b>Pagado a la fecha:</b> ${fmtMXN(venta.pc)}</div>
+        <div><b>Saldo:</b> ${fmtMXN(venta.sd)}</div>
+      </div>
+      ${pct!==null ? `
+      <div style="margin-top:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-400);margin-bottom:4px;"><span>Cobrado</span><span>${fmtPct(pct)}</span></div>
+        <div style="height:6px;border-radius:3px;background:var(--line);overflow:hidden;"><div style="height:100%;width:${Math.min(pct,100).toFixed(1)}%;background:var(--accent, #1a1a1a);"></div></div>
+      </div>` : ""}
+    </div>` : (u.cb ? `<div class="foot" style="margin-top:12px;"><b>Comprador:</b> ${u.cb}</div>` : "")}
   `;
 }
 // Cobranza real por cliente/unidad -- fuente: ventas/vtas palm agosto 2026.xlsx
