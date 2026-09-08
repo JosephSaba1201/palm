@@ -710,6 +710,7 @@ function fmtFecha(iso){
   return `${d} ${MESES[m-1]} ${y}`;
 }
 // file: nombre en fotos/ (y fotos/thumbs/ para la miniatura) · iso: fecha real (EXIF / nombre de archivo)
+const FOTOS_BASE = "https://chnboztriyvrlqisvdpv.supabase.co/storage/v1/object/public/fotos";
 const GALERIA_RAW = [
   {file:"01_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna de Torres 1 y 2 en etapa de estructura, con luna llena."},
   {file:"02_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna, acercamiento a estructura metálica."},
@@ -2751,8 +2752,8 @@ function pageGaleria(){
   const all = GALERIA.filter(g=>enScope(g.torre));
   const items = galeriaCat==="Todas" ? all : all.filter(g=>g.categoria===galeriaCat);
   const tile = g => `
-    <a class="photo-tile" href="fotos/${encodeURIComponent(g.file)}" target="_blank" rel="noopener">
-      <div class="art"><img src="fotos/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"><span class="badge">${g.categoria}</span></div>
+    <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener">
+      <div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"><span class="badge">${g.categoria}</span></div>
       <div class="meta">
         <div class="zona">${g.fecha}</div>
         <div class="cap">${g.cap}</div>
@@ -2761,8 +2762,8 @@ function pageGaleria(){
   const oldest = all[all.length-1], newest = all[0];
   const evolucion = all.slice();
   const timelineItem = g => `
-    <a class="timeline-item" href="fotos/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
-      <div class="timeline-thumb"><img src="fotos/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
+    <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
+      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
       <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
       <div class="timeline-date">${g.fecha}</div>
     </a>`;
@@ -2785,8 +2786,8 @@ function pageGaleria(){
   <div class="card" style="margin-bottom:24px;">
     <div class="card-head"><h3>Antes / Ahora</h3><span class="hint">Vista general del sitio</span></div>
     <div class="compare-wrap">
-      <a class="photo-tile" href="fotos/${encodeURIComponent(oldest.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${oldest.fecha}</span><div class="art"><img src="fotos/thumbs/${encodeURIComponent(oldest.file)}" loading="lazy" alt=""></div></a>
-      <a class="photo-tile" href="fotos/${encodeURIComponent(newest.file)}" target="_blank" rel="noopener"><span class="compare-label">Ahora · ${newest.fecha}</span><div class="art"><img src="fotos/thumbs/${encodeURIComponent(newest.file)}" loading="lazy" alt=""></div></a>
+      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(oldest.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${oldest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(oldest.file)}" loading="lazy" alt=""></div></a>
+      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(newest.file)}" target="_blank" rel="noopener"><span class="compare-label">Ahora · ${newest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(newest.file)}" loading="lazy" alt=""></div></a>
     </div>
   </div>` : ""}
 
