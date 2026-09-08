@@ -304,6 +304,7 @@ td.name{text-align:left;font-weight:600;}
 .tooltip b{display:block;font-weight:600;margin-bottom:2px;}
 .t1-corte-row{display:flex;gap:20px;align-items:flex-start;}
 .t1-corte-panel{width:280px;flex:none;}
+.t1-corte-wrap{position:relative;flex:1;min-width:0;max-width:640px;border-radius:8px;overflow:hidden;aspect-ratio:1024/1536;}
 
 /* -------- gallery -------- */
 .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
@@ -454,6 +455,7 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 
   .t1-corte-row{flex-direction:column;}
   .t1-corte-panel{width:100%;}
+  .t1-corte-wrap{flex:none;width:100%;}
 
   .table-wrap,.timeline-strip{-webkit-overflow-scrolling:touch;}
 }
@@ -2513,7 +2515,7 @@ function pageCorteT1(){
   </div>
   <p class="foot" style="margin:-6px 0 14px;">El rayado marca disponibles y apartados/reservados. Pasa el cursor o toca un departamento para ver su estatus. Clic para ver el detalle completo.</p>
   <div class="t1-corte-row">
-    <div id="t1CorteWrap" style="position:relative;flex:1;min-width:0;max-width:640px;border-radius:8px;overflow:hidden;aspect-ratio:1024/1536;">
+    <div id="t1CorteWrap" class="t1-corte-wrap">
       <img src="assets/torre1_corte.png?v=${T1_CORTE_IMG_VER}" alt="Corte Torre 1" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;object-fit:cover;">
       <svg viewBox="0 0 ${T1_IMG_W} ${T1_IMG_H}" preserveAspectRatio="none" style="position:absolute;top:0;left:0;width:100%;height:100%;display:block;">${T1_HATCH_DEFS}${svgRects}</svg>
     </div>
