@@ -422,6 +422,8 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 .qb-row-actions{display:flex;align-items:center;gap:10px;}
 .qb-pdf-btn{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;}
 .qb-pdf-btn:hover{background:var(--accent);color:#fff;}
+.btn-ver-mas{display:block;width:100%;margin-top:10px;font-size:12.5px;font-weight:600;color:var(--accent-ink);background:var(--page);border:1px dashed var(--line-strong);border-radius:8px;padding:10px;cursor:pointer;text-align:center;}
+.btn-ver-mas:hover{background:var(--accent-soft);border-color:var(--accent);}
 .qb-cat{font-size:13px;font-weight:600;}
 .qb-items{font-size:11.5px;color:var(--ink-400);margin-top:2px;max-width:420px;}
 .qb-nums{text-align:right;font-size:13px;flex:none;width:170px;}
@@ -1372,6 +1374,8 @@ function renderPartidas(catKeys){
   if(sel) sel.addEventListener("change", ()=>{ setSort("pt", sel.value); renderPartidas(catKeys); });
 }
 let pvFiltro = "";
+const PV_PAGE_SIZE = 20;
+let pvLimite = {};
 function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   resultsId = resultsId || "pvResults"; hintId = hintId || "pvHint";
   const el = document.getElementById(resultsId);
@@ -1379,7 +1383,8 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   const sortId = resultsId+"_sort";
   const all = proveedoresCombinados(cats);
   const filtered = pvFiltro ? all.filter(p=>normTxt(p.n).includes(normTxt(pvFiltro))) : all;
-  const rows = sortAgg(filtered, sortId).slice(0,20);
+  const limite = pvLimite[resultsId] || PV_PAGE_SIZE;
+  const rows = sortAgg(filtered, sortId).slice(0, limite);
   el.innerHTML = `
     <div class="qb-toolbar" style="margin-top:0;">${sortSelectHtml(sortId, false)}</div>
     ${rows.length ? rows.map(p=>`
@@ -1389,9 +1394,10 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
           <div class="qb-nums tabular"><b>${fmtMXN(p.s,true)}</b></div>
           <button type="button" class="qb-pdf-btn" data-pdfprov="${p.n.replace(/"/g,'&quot;')}" title="Descargar reporte PDF de este proveedor">PDF</button>
         </div>
-      </div>`).join("") : `<p class="foot" style="margin-top:12px;">Sin coincidencias.</p>`}`;
+      </div>`).join("") : `<p class="foot" style="margin-top:12px;">Sin coincidencias.</p>`}
+    ${filtered.length>limite ? `<button type="button" class="btn-ver-mas" data-vermas="${resultsId}">Ver más proveedores (${filtered.length-limite} restantes)</button>` : ""}`;
   const hint = document.getElementById(hintId);
-  if(hint) hint.textContent = filtered.length>20 ? `Mostrando 20 de ${filtered.length}` : `${filtered.length} proveedor${filtered.length===1?"":"es"}`;
+  if(hint) hint.textContent = filtered.length>limite ? `Mostrando ${limite} de ${filtered.length}` : `${filtered.length} proveedor${filtered.length===1?"":"es"}`;
   const sel = el.querySelector(`[data-sortid="${sortId}"]`);
   if(sel) sel.addEventListener("change", ()=>{ setSort(sortId, sel.value); renderProveedores(cats, catKeys, resultsId, hintId, onProvClick); });
   if(onProvClick) el.querySelectorAll("[data-prov]").forEach(row=>row.addEventListener("click", ()=>onProvClick(row.dataset.prov)));
@@ -1399,6 +1405,11 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
     e.stopPropagation();
     descargarReportePagosProveedor(btn.dataset.pdfprov, catKeys);
   }));
+  const verMasBtn = el.querySelector("[data-vermas]");
+  if(verMasBtn) verMasBtn.addEventListener("click", ()=>{
+    pvLimite[resultsId] = limite + PV_PAGE_SIZE;
+    renderProveedores(cats, catKeys, resultsId, hintId, onProvClick);
+  });
 }
 
 /* ---- Reporte en PDF de todos los pagos de un proveedor, agrupado por partida ---- */
@@ -2921,7 +2932,7 @@ function renderAll(){
       pvFiltro = "";
       const onSfProvClick = (name)=>{ sfInput.value = name; renderPagosSearch(name, ["soft"], "sfResults"); wireTips(root); };
       renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick);
-      if(sfPvInput) sfPvInput.addEventListener("input", ()=>{ pvFiltro=sfPvInput.value; renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick); });
+      if(sfPvInput) sfPvInput.addEventListener("input", ()=>{ pvFiltro=sfPvInput.value; pvLimite["sfPvResults"]=PV_PAGE_SIZE; renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick); });
     } else if(coTab==="semanal"){
       const semInput = document.getElementById("semInput");
       if(semInput) semInput.addEventListener("change", ()=>{ corteSel = semInput.value; renderAll(); });
@@ -2942,7 +2953,7 @@ function renderAll(){
       pvFiltro = "";
       const onProvClick = (name)=>{ pgInput.value = name; renderPagosSearch(name, pagosCatKeys); wireTips(root); };
       renderProveedores(pagosCats, pagosCatKeys, undefined, undefined, onProvClick);
-      if(pvInput) pvInput.addEventListener("input", ()=>{ pvFiltro=pvInput.value; renderProveedores(pagosCats, pagosCatKeys, undefined, undefined, onProvClick); });
+      if(pvInput) pvInput.addEventListener("input", ()=>{ pvFiltro=pvInput.value; pvLimite["pvResults"]=PV_PAGE_SIZE; renderProveedores(pagosCats, pagosCatKeys, undefined, undefined, onProvClick); });
 
       const ptInput = document.getElementById("ptInput");
       ptFiltro = "";
