@@ -406,6 +406,9 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 .qb-row-clickable{cursor:pointer;border-radius:8px;}
 .qb-row-clickable:hover{background:var(--page);}
 .qb-row:last-child{border-bottom:none;}
+.qb-row-actions{display:flex;align-items:center;gap:10px;}
+.qb-pdf-btn{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--accent-ink);background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;padding:4px 8px;cursor:pointer;white-space:nowrap;}
+.qb-pdf-btn:hover{background:var(--accent);color:#fff;}
 .qb-cat{font-size:13px;font-weight:600;}
 .qb-items{font-size:11.5px;color:var(--ink-400);margin-top:2px;max-width:420px;}
 .qb-nums{text-align:right;font-size:13px;flex:none;width:170px;}
@@ -529,6 +532,8 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 
 <div class="tooltip" id="tooltip"></div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script>
 /* ============================================================ DATA ============================================================ */
 const PROYECTO = {
@@ -1489,7 +1494,7 @@ function renderPartidas(catKeys){
   if(sel) sel.addEventListener("change", ()=>{ setSort("pt", sel.value); renderPartidas(catKeys); });
 }
 let pvFiltro = "";
-function renderProveedores(cats, resultsId, hintId, onProvClick){
+function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   resultsId = resultsId || "pvResults"; hintId = hintId || "pvHint";
   const el = document.getElementById(resultsId);
   if(!el) return;
@@ -1502,13 +1507,86 @@ function renderProveedores(cats, resultsId, hintId, onProvClick){
     ${rows.length ? rows.map(p=>`
       <div class="qb-row qb-row-clickable" data-prov="${p.n.replace(/"/g,'&quot;')}">
         <div><div class="qb-cat">${p.n}</div><div class="qb-items">${p.c} pago${p.c===1?"":"s"} · clic para ver</div></div>
-        <div class="qb-nums tabular"><b>${fmtMXN(p.s,true)}</b></div>
+        <div class="qb-row-actions">
+          <div class="qb-nums tabular"><b>${fmtMXN(p.s,true)}</b></div>
+          <button type="button" class="qb-pdf-btn" data-pdfprov="${p.n.replace(/"/g,'&quot;')}" title="Descargar reporte PDF de este proveedor">PDF</button>
+        </div>
       </div>`).join("") : `<p class="foot" style="margin-top:12px;">Sin coincidencias.</p>`}`;
   const hint = document.getElementById(hintId);
   if(hint) hint.textContent = filtered.length>20 ? `Mostrando 20 de ${filtered.length}` : `${filtered.length} proveedor${filtered.length===1?"":"es"}`;
   const sel = el.querySelector(`[data-sortid="${sortId}"]`);
-  if(sel) sel.addEventListener("change", ()=>{ setSort(sortId, sel.value); renderProveedores(cats, resultsId, hintId, onProvClick); });
+  if(sel) sel.addEventListener("change", ()=>{ setSort(sortId, sel.value); renderProveedores(cats, catKeys, resultsId, hintId, onProvClick); });
   if(onProvClick) el.querySelectorAll("[data-prov]").forEach(row=>row.addEventListener("click", ()=>onProvClick(row.dataset.prov)));
+  el.querySelectorAll("[data-pdfprov]").forEach(btn=>btn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    descargarReportePagosProveedor(btn.dataset.pdfprov, catKeys);
+  }));
+}
+
+/* ---- Reporte en PDF de todos los pagos de un proveedor, agrupado por partida ---- */
+function descargarReportePagosProveedor(nombre, catKeys){
+  const items = PAGOS_ITEMS.filter(x=>x.b===nombre && (!catKeys || catKeys.includes(x.cat)));
+  if(!items.length) return;
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    alert("No se pudo cargar el generador de PDF. Revisa tu conexión e intenta de nuevo.");
+    return;
+  }
+  const total = items.reduce((s,x)=>s+x.im,0);
+  const fechasOrd = items.map(x=>x.f).slice().sort();
+
+  const grupos = {};
+  items.forEach(x=>{
+    const key = x.sp || "SIN PARTIDA";
+    if(!grupos[key]) grupos[key] = {n:key, s:0, c:0, items:[]};
+    grupos[key].s += x.im; grupos[key].c += 1; grupos[key].items.push(x);
+  });
+  const gruposOrdenados = Object.values(grupos).sort((a,b)=>b.s-a.s);
+  gruposOrdenados.forEach(g=>g.items.sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:0));
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"pt", format:"letter" });
+  const marginL = 40;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  let y = 52;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(31,100,97);
+  doc.text("PALM Diamante — Reporte de Pagos", marginL, y);
+  y += 22;
+  doc.setFontSize(13); doc.setTextColor(23,21,18);
+  doc.text(nombre, marginL, y);
+  y += 17;
+  doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
+  doc.text(`Total pagado: ${fmtMXN(total,true)}   ·   ${items.length} pago${items.length===1?"":"s"}   ·   ${fmtFecha(fechasOrd[0])} — ${fmtFecha(fechasOrd[fechasOrd.length-1])}`, marginL, y);
+  y += 12;
+  doc.setDrawColor(228,225,215);
+  doc.line(marginL, y, pageW-marginL, y);
+  y += 16;
+
+  gruposOrdenados.forEach(g=>{
+    if(y > pageH-100){ doc.addPage(); y = 52; }
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(31,100,97);
+    doc.text(g.n, marginL, y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
+    doc.text(`${fmtMXN(g.s,true)}  ·  ${g.c} pago${g.c===1?"":"s"}`, pageW-marginL, y, {align:"right"});
+    y += 8;
+
+    doc.autoTable({
+      startY: y,
+      margin: {left: marginL, right: marginL},
+      head: [["Fecha","Concepto","Semana","Importe"]],
+      body: g.items.map(x=>[fmtFecha(x.f), x.co, x.sem||"", fmtMXN(x.im,true)]),
+      styles: {fontSize:8.5, cellPadding:4, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
+      headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
+      columnStyles: {0:{cellWidth:58}, 2:{cellWidth:42}, 3:{cellWidth:75, halign:"right"}},
+      theme: "striped",
+      didDrawPage: () => { y = 52; },
+    });
+    y = doc.lastAutoTable.finalY + 18;
+  });
+
+  const nombreArchivo = nombre.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60);
+  doc.save(`Pagos_${nombreArchivo}.pdf`);
 }
 
 /* ---- Consulta rápida de Control de Obra: busca en los pagos reales itemizados ---- */
@@ -2964,8 +3042,8 @@ function renderAll(){
       const sfPvInput = document.getElementById("sfPvInput");
       pvFiltro = "";
       const onSfProvClick = (name)=>{ sfInput.value = name; renderPagosSearch(name, ["soft"], "sfResults"); wireTips(root); };
-      renderProveedores([PAGOS_REAL.soft], "sfPvResults", "sfPvHint", onSfProvClick);
-      if(sfPvInput) sfPvInput.addEventListener("input", ()=>{ pvFiltro=sfPvInput.value; renderProveedores([PAGOS_REAL.soft], "sfPvResults", "sfPvHint", onSfProvClick); });
+      renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick);
+      if(sfPvInput) sfPvInput.addEventListener("input", ()=>{ pvFiltro=sfPvInput.value; renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick); });
     } else if(coTab==="semanal"){
       const semInput = document.getElementById("semInput");
       if(semInput) semInput.addEventListener("change", ()=>{ corteSel = semInput.value; renderAll(); });
@@ -2985,8 +3063,8 @@ function renderAll(){
       const pvInput = document.getElementById("pvInput");
       pvFiltro = "";
       const onProvClick = (name)=>{ pgInput.value = name; renderPagosSearch(name, pagosCatKeys); wireTips(root); };
-      renderProveedores(pagosCats, undefined, undefined, onProvClick);
-      if(pvInput) pvInput.addEventListener("input", ()=>{ pvFiltro=pvInput.value; renderProveedores(pagosCats, undefined, undefined, onProvClick); });
+      renderProveedores(pagosCats, pagosCatKeys, undefined, undefined, onProvClick);
+      if(pvInput) pvInput.addEventListener("input", ()=>{ pvFiltro=pvInput.value; renderProveedores(pagosCats, pagosCatKeys, undefined, undefined, onProvClick); });
 
       const ptInput = document.getElementById("ptInput");
       ptFiltro = "";
