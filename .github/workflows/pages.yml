@@ -29,6 +29,7 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp manifest.json _site/
+          cp favicon.ico _site/
           cp -r assets _site/
 
       - name: Configure Pages
