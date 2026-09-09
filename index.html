@@ -424,6 +424,13 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
 .qb-pdf-btn:hover{background:var(--accent);color:#fff;}
 .btn-ver-mas{display:block;width:100%;margin-top:10px;font-size:12.5px;font-weight:600;color:var(--accent-ink);background:var(--page);border:1px dashed var(--line-strong);border-radius:8px;padding:10px;cursor:pointer;text-align:center;}
 .btn-ver-mas:hover{background:var(--accent-soft);border-color:var(--accent);}
+.qb-selbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:10px;padding:8px 10px;background:var(--page);border:1px solid var(--line);border-radius:8px;}
+.qb-selall{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--ink-600);cursor:pointer;white-space:nowrap;}
+.qb-selinfo{font-size:12px;color:var(--ink-400);flex:1;}
+.qb-selinfo b{color:var(--ink-900);}
+.qb-check{display:flex;align-items:center;padding-right:2px;}
+.qb-row-check{justify-content:flex-start;align-items:center;}
+.qb-row-check>div:nth-child(2){flex:1;min-width:0;}
 .qb-cat{font-size:13px;font-weight:600;}
 .qb-items{font-size:11.5px;color:var(--ink-400);margin-top:2px;max-width:420px;}
 .qb-nums{text-align:right;font-size:13px;flex:none;width:170px;}
@@ -1376,6 +1383,7 @@ function renderPartidas(catKeys){
 let pvFiltro = "";
 const PV_PAGE_SIZE = 20;
 let pvLimite = {};
+let pvSeleccion = {};
 function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   resultsId = resultsId || "pvResults"; hintId = hintId || "pvHint";
   const el = document.getElementById(resultsId);
@@ -1385,10 +1393,21 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   const filtered = pvFiltro ? all.filter(p=>normTxt(p.n).includes(normTxt(pvFiltro))) : all;
   const limite = pvLimite[resultsId] || PV_PAGE_SIZE;
   const rows = sortAgg(filtered, sortId).slice(0, limite);
+  const seleccion = pvSeleccion[resultsId] || new Set();
+  const seleccionados = filtered.filter(p=>seleccion.has(p.n));
+  const totalFiltrado = filtered.reduce((s,p)=>s+p.s,0);
+  const totalSeleccion = seleccionados.reduce((s,p)=>s+p.s,0);
+  const todosMarcados = filtered.length>0 && seleccionados.length===filtered.length;
   el.innerHTML = `
     <div class="qb-toolbar" style="margin-top:0;">${sortSelectHtml(sortId, false)}</div>
+    <div class="qb-selbar">
+      <label class="qb-selall"><input type="checkbox" data-selall="${resultsId}" ${todosMarcados?"checked":""}> Seleccionar todos (${filtered.length})</label>
+      <div class="qb-selinfo">${seleccionados.length>0 ? `${seleccionados.length} seleccionados · <b>${fmtMXN(totalSeleccion,true)}</b>` : `${filtered.length} proveedor${filtered.length===1?"":"es"} · <b>${fmtMXN(totalFiltrado,true)}</b>`}</div>
+      <button type="button" class="qb-pdf-btn" data-pdfresumen="${resultsId}" title="PDF con el total de cada proveedor (sin desglosar pagos)">PDF resumen${seleccionados.length>0?` (${seleccionados.length})`:""}</button>
+    </div>
     ${rows.length ? rows.map(p=>`
-      <div class="qb-row qb-row-clickable" data-prov="${p.n.replace(/"/g,'&quot;')}">
+      <div class="qb-row qb-row-clickable qb-row-check" data-prov="${p.n.replace(/"/g,'&quot;')}">
+        <label class="qb-check" onclick="event.stopPropagation()"><input type="checkbox" data-checkprov="${resultsId}" value="${p.n.replace(/"/g,'&quot;')}" ${seleccion.has(p.n)?"checked":""}></label>
         <div><div class="qb-cat">${p.n}</div><div class="qb-items">${p.c} pago${p.c===1?"":"s"} · clic para ver</div></div>
         <div class="qb-row-actions">
           <div class="qb-nums tabular"><b>${fmtMXN(p.s,true)}</b></div>
@@ -1409,6 +1428,20 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   if(verMasBtn) verMasBtn.addEventListener("click", ()=>{
     pvLimite[resultsId] = limite + PV_PAGE_SIZE;
     renderProveedores(cats, catKeys, resultsId, hintId, onProvClick);
+  });
+  el.querySelectorAll("[data-checkprov]").forEach(chk=>chk.addEventListener("change", ()=>{
+    if(!pvSeleccion[resultsId]) pvSeleccion[resultsId] = new Set();
+    if(chk.checked) pvSeleccion[resultsId].add(chk.value); else pvSeleccion[resultsId].delete(chk.value);
+    renderProveedores(cats, catKeys, resultsId, hintId, onProvClick);
+  }));
+  const selAllChk = el.querySelector("[data-selall]");
+  if(selAllChk) selAllChk.addEventListener("change", ()=>{
+    pvSeleccion[resultsId] = selAllChk.checked ? new Set(filtered.map(p=>p.n)) : new Set();
+    renderProveedores(cats, catKeys, resultsId, hintId, onProvClick);
+  });
+  const pdfResumenBtn = el.querySelector("[data-pdfresumen]");
+  if(pdfResumenBtn) pdfResumenBtn.addEventListener("click", ()=>{
+    descargarResumenProveedoresPDF(seleccionados.length>0 ? seleccionados : filtered, seleccionados.length>0);
   });
 }
 
@@ -1476,6 +1509,54 @@ function descargarReportePagosProveedor(nombre, catKeys){
 
   const nombreArchivo = nombre.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60);
   doc.save(`Pagos_${nombreArchivo}.pdf`);
+}
+
+/* ---- Reporte en PDF de varios proveedores juntos: solo el total de cada uno, sin desglosar pagos ---- */
+function descargarResumenProveedoresPDF(lista, esSeleccion){
+  if(!lista || !lista.length) return;
+  if(!window.jspdf || !window.jspdf.jsPDF){
+    alert("No se pudo cargar el generador de PDF. Revisa tu conexión e intenta de nuevo.");
+    return;
+  }
+  const ordenados = [...lista].sort((a,b)=>b.s-a.s);
+  const totalGeneral = ordenados.reduce((s,p)=>s+p.s,0);
+  const totalPagos = ordenados.reduce((s,p)=>s+p.c,0);
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"pt", format:"letter" });
+  const marginL = 40;
+  const pageW = doc.internal.pageSize.getWidth();
+  let y = 52;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(31,100,97);
+  doc.text("PALM Diamante — Resumen de Pagos por Proveedor", marginL, y);
+  y += 22;
+  doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
+  doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${ordenados.length}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}`, marginL, y);
+  y += 20;
+
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(23,21,18);
+  doc.text(`Total: ${fmtMXN(totalGeneral,true)}`, marginL, y);
+  y += 12;
+  doc.setDrawColor(228,225,215);
+  doc.line(marginL, y, pageW-marginL, y);
+  y += 10;
+
+  doc.autoTable({
+    startY: y,
+    margin: {left: marginL, right: marginL},
+    head: [["Proveedor","Pagos","Total"]],
+    body: ordenados.map(p=>[p.n, String(p.c), fmtMXN(p.s,true)]),
+    foot: [["TOTAL", String(totalPagos), fmtMXN(totalGeneral,true)]],
+    styles: {fontSize:9, cellPadding:5, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
+    headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
+    footStyles: {fillColor:[31,100,97], textColor:255, fontStyle:"bold"},
+    columnStyles: {1:{cellWidth:55, halign:"right"}, 2:{cellWidth:90, halign:"right"}},
+    theme: "striped",
+  });
+
+  const stamp = esSeleccion ? `Seleccion_${ordenados.length}` : "Todos";
+  doc.save(`Resumen_Proveedores_${stamp}.pdf`);
 }
 
 /* ---- Consulta rápida de Control de Obra: busca en los pagos reales itemizados ---- */
