@@ -1473,6 +1473,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
   const pageH = doc.internal.pageSize.getHeight();
   const logoW = 42, logoH = 42 * (417/360);
   const headerTop = 34;
+  const topSinMembrete = 40; // páginas después de la primera: sin logo/membrete, para no tapar la tabla
 
   function drawLetterhead(){
     doc.addImage(PALM_LOGO_B64, "PNG", marginL, headerTop, logoW, logoH);
@@ -1486,7 +1487,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
     return headerTop + logoH + 26;
   }
 
-  let y = drawLetterhead();
+  let y = drawLetterhead(); // el membrete con logo va SOLO en esta primera hoja
 
   doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(23,21,18);
   doc.text(nombre, marginL, y);
@@ -1500,7 +1501,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
   y += 16;
 
   gruposOrdenados.forEach(g=>{
-    if(y > pageH-100){ doc.addPage(); y = drawLetterhead(); }
+    if(y > pageH-100){ doc.addPage(); y = topSinMembrete; }
     doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(31,100,97);
     doc.text(g.n, marginL, y);
     doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
@@ -1516,7 +1517,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
       headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
       columnStyles: {0:{cellWidth:56}, 1:{cellWidth:80}, 3:{cellWidth:40}, 4:{cellWidth:70, halign:"right"}},
       theme: "striped",
-      didDrawPage: () => { y = drawLetterhead(); },
+      didDrawPage: () => { y = topSinMembrete; },
     });
     y = doc.lastAutoTable.finalY + 18;
   });
@@ -1540,11 +1541,21 @@ function descargarResumenProveedoresPDF(lista, esSeleccion){
   const doc = new jsPDF({ unit:"pt", format:"letter" });
   const marginL = 40;
   const pageW = doc.internal.pageSize.getWidth();
-  let y = 52;
+  const logoW = 42, logoH = 42 * (417/360);
+  const headerTop = 34;
+  let y = headerTop;
 
-  doc.setFont("helvetica","bold"); doc.setFontSize(16); doc.setTextColor(31,100,97);
-  doc.text("PALM Diamante — Resumen de Pagos por Proveedor", marginL, y);
-  y += 22;
+  // Membrete con logo: solo en esta primera hoja (autoTable no vuelve a llamar este bloque en páginas siguientes)
+  doc.addImage(PALM_LOGO_B64, "PNG", marginL, headerTop, logoW, logoH);
+  doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(31,100,97);
+  doc.text("PALM Diamante", marginL + logoW + 14, headerTop + 20);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(90,87,80);
+  doc.text("Resumen de Pagos por Proveedor", marginL + logoW + 14, headerTop + 36);
+  doc.setDrawColor(63,166,163);
+  doc.setLineWidth(1.2);
+  doc.line(marginL, headerTop + logoH + 8, pageW-marginL, headerTop + logoH + 8);
+  y = headerTop + logoH + 26;
+
   doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
   doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${ordenados.length}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}`, marginL, y);
   y += 20;
