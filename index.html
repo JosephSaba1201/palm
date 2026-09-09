@@ -1541,9 +1541,7 @@ function renderItemList(items, resultsId, sortId, opts){
   }
   const total = items.reduce((s,x)=>s+x.im,0);
   const sortKey = getSort(sortId, "fecha_desc");
-  const sorted = sortItems(items, sortKey, "f", "im");
-  const cap = opts.cap || 15;
-  const shown = sorted.slice(0,cap);
+  const shown = sortItems(items, sortKey, "f", "im");
   el.innerHTML = `
     <div class="qb-toolbar" style="margin-top:0;">
       <div class="qb-total" style="flex:1;margin-top:0;">
@@ -1559,7 +1557,6 @@ function renderItemList(items, resultsId, sortId, opts){
           <div class="qb-nums tabular">${fmtMXN(x.im,true)}</div>
         </div>`).join("")}
     </div>
-    ${items.length>shown.length ? `<p class="foot" style="margin-top:10px;">Mostrando ${shown.length} de ${items.length}.</p>` : ""}
   `;
   const sel = el.querySelector(`[data-sortid="${sortId}"]`);
   if(sel) sel.addEventListener("change", ()=>{ setSort(sortId, sel.value); if(opts.rerender) opts.rerender(); });
@@ -1658,7 +1655,6 @@ function renderDrillPanel(catKey){
     <div class="budget-tree" style="padding:0;">
       ${rows.map(r=>{
         const items = itemsFor(r.n);
-        const shown = items.slice(0,15);
         return `<details class="budget-node">
           <summary>
             <div class="qb-row" style="border-bottom:none;padding:11px 4px;">
@@ -1667,12 +1663,11 @@ function renderDrillPanel(catKey){
             </div>
           </summary>
           <div class="budget-children">
-            ${shown.map(x=>`
+            ${items.map(x=>`
               <div class="qb-row" style="padding-left:28px;">
                 <div><div class="qb-cat" style="font-weight:400;font-size:12.5px;">${fmtFecha(x.f)}</div><div class="qb-items">${x.co}</div></div>
                 <div class="qb-nums tabular">${fmtMXN(x.im,true)}</div>
               </div>`).join("")}
-            ${items.length>shown.length ? `<p class="foot" style="padding:6px 4px 8px 28px;">Mostrando ${shown.length} de ${items.length}.</p>` : ""}
           </div>
         </details>`;
       }).join("")}
