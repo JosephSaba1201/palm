@@ -1455,6 +1455,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
     alert("No se pudo cargar el generador de PDF. Revisa tu conexión e intenta de nuevo.");
     return;
   }
+  try {
   const total = items.reduce((s,x)=>s+x.im,0);
   const fechasOrd = items.map(x=>x.f).slice().sort();
 
@@ -1544,6 +1545,10 @@ function descargarReportePagosProveedor(nombre, catKeys){
 
   const nombreArchivo = nombre.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60);
   doc.save(`Pagos_${nombreArchivo}.pdf`);
+  } catch(err) {
+    console.error("Error generando PDF de proveedor:", err);
+    alert("No se pudo generar el PDF (" + nombre + "). Error: " + err.message);
+  }
 }
 
 /* ---- Reporte en PDF de varios proveedores juntos: totales por Área (Torre 1, Torre 2, Amenidades, etc.)
@@ -1557,6 +1562,7 @@ function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
     alert("No se pudo cargar el generador de PDF. Revisa tu conexión e intenta de nuevo.");
     return;
   }
+  try {
 
   // Área (torre/categoría) -> Partida -> Proveedor -> {s,c}
   const areas = {};
@@ -1652,6 +1658,10 @@ function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
 
   const stamp = esSeleccion ? `Seleccion_${nombresSet.size}` : "Todos";
   doc.save(`Resumen_Proveedores_${stamp}.pdf`);
+  } catch(err) {
+    console.error("Error generando PDF resumen de proveedores:", err);
+    alert("No se pudo generar el PDF resumen. Error: " + err.message);
+  }
 }
 
 /* ---- Consulta rápida de Control de Obra: busca en los pagos reales itemizados ---- */
