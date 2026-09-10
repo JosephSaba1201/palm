@@ -1458,14 +1458,21 @@ function descargarReportePagosProveedor(nombre, catKeys){
   const total = items.reduce((s,x)=>s+x.im,0);
   const fechasOrd = items.map(x=>x.f).slice().sort();
 
-  const grupos = {};
+  // Área (torre/amenidades/etc.) -> Partida -> pagos, para que quede claro a qué torre va cada grupo
+  const areas = {};
   items.forEach(x=>{
-    const key = x.sp || "SIN PARTIDA";
-    if(!grupos[key]) grupos[key] = {n:key, s:0, c:0, items:[]};
-    grupos[key].s += x.im; grupos[key].c += 1; grupos[key].items.push(x);
+    const areaKey = x.cat;
+    const partidaKey = x.sp || "SIN PARTIDA";
+    if(!areas[areaKey]) areas[areaKey] = {s:0, c:0, partidas:{}};
+    areas[areaKey].s += x.im; areas[areaKey].c += 1;
+    if(!areas[areaKey].partidas[partidaKey]) areas[areaKey].partidas[partidaKey] = {n:partidaKey, s:0, c:0, items:[]};
+    const g = areas[areaKey].partidas[partidaKey];
+    g.s += x.im; g.c += 1; g.items.push(x);
   });
-  const gruposOrdenados = Object.values(grupos).sort((a,b)=>b.s-a.s);
-  gruposOrdenados.forEach(g=>g.items.sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:0));
+  const areaKeysOrdenadas = PAGOS_CAT_ORDER_KEYS.filter(k=>areas[k]);
+  areaKeysOrdenadas.forEach(k=>{
+    Object.values(areas[k].partidas).forEach(g=>g.items.sort((a,b)=>a.f<b.f?-1:a.f>b.f?1:0));
+  });
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:"pt", format:"letter" });
@@ -1501,26 +1508,38 @@ function descargarReportePagosProveedor(nombre, catKeys){
   doc.line(marginL, y, pageW-marginL, y);
   y += 16;
 
-  gruposOrdenados.forEach(g=>{
-    if(y > pageH-100){ doc.addPage(); y = topSinMembrete; }
-    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(31,100,97);
-    doc.text(g.n, marginL, y);
+  areaKeysOrdenadas.forEach(areaKey=>{
+    const area = areas[areaKey];
+    if(y > pageH-110){ doc.addPage(); y = topSinMembrete; }
+    doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(31,100,97);
+    doc.text(PAGOS_CAT_LABELS[areaKey] || areaKey, marginL, y);
     doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
-    doc.text(`${fmtMXN(g.s,true)}  ·  ${g.c} pago${g.c===1?"":"s"}`, pageW-marginL, y, {align:"right"});
-    y += 8;
+    doc.text(`${fmtMXN(area.s,true)}  ·  ${area.c} pago${area.c===1?"":"s"}`, pageW-marginL, y, {align:"right"});
+    y += 12;
 
-    doc.autoTable({
-      startY: y,
-      margin: {left: marginL, right: marginL},
-      head: [["Fecha","Partida","Concepto","Semana","Importe"]],
-      body: g.items.map(x=>[fmtFecha(x.f), g.n, x.co, x.sem||"", fmtMXN(x.im,true)]),
-      styles: {fontSize:8.5, cellPadding:4, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
-      headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
-      columnStyles: {0:{cellWidth:56}, 1:{cellWidth:80}, 3:{cellWidth:40}, 4:{cellWidth:70, halign:"right"}},
-      theme: "striped",
-      didDrawPage: () => { y = topSinMembrete; },
+    const partidasOrdenadas = Object.values(area.partidas).sort((a,b)=>b.s-a.s);
+    partidasOrdenadas.forEach(g=>{
+      if(y > pageH-100){ doc.addPage(); y = topSinMembrete; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(23,21,18);
+      doc.text(g.n, marginL+8, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90,87,80);
+      doc.text(`${fmtMXN(g.s,true)}  ·  ${g.c} pago${g.c===1?"":"s"}`, pageW-marginL, y, {align:"right"});
+      y += 8;
+
+      doc.autoTable({
+        startY: y,
+        margin: {left: marginL+8, right: marginL},
+        head: [["Fecha","Concepto","Semana","Importe"]],
+        body: g.items.map(x=>[fmtFecha(x.f), x.co, x.sem||"", fmtMXN(x.im,true)]),
+        styles: {fontSize:8.5, cellPadding:4, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
+        headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
+        columnStyles: {0:{cellWidth:56}, 2:{cellWidth:42}, 3:{cellWidth:75, halign:"right"}},
+        theme: "striped",
+        didDrawPage: () => { y = topSinMembrete; },
+      });
+      y = doc.lastAutoTable.finalY + 16;
     });
-    y = doc.lastAutoTable.finalY + 18;
+    y += 8;
   });
 
   const nombreArchivo = nombre.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60);
