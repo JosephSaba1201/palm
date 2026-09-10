@@ -1441,7 +1441,8 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   });
   const pdfResumenBtn = el.querySelector("[data-pdfresumen]");
   if(pdfResumenBtn) pdfResumenBtn.addEventListener("click", ()=>{
-    descargarResumenProveedoresPDF(seleccionados.length>0 ? seleccionados : filtered, seleccionados.length>0);
+    const base = seleccionados.length>0 ? seleccionados : filtered;
+    descargarResumenProveedoresPDF(base.map(p=>p.n), catKeys, seleccionados.length>0);
   });
 }
 
@@ -1526,61 +1527,111 @@ function descargarReportePagosProveedor(nombre, catKeys){
   doc.save(`Pagos_${nombreArchivo}.pdf`);
 }
 
-/* ---- Reporte en PDF de varios proveedores juntos: solo el total de cada uno, sin desglosar pagos ---- */
-function descargarResumenProveedoresPDF(lista, esSeleccion){
-  if(!lista || !lista.length) return;
+/* ---- Reporte en PDF de varios proveedores juntos: totales por Área (Torre 1, Torre 2, Amenidades, etc.)
+   y dentro de cada área por Partida, sin desglosar pago por pago ---- */
+function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
+  if(!nombres || !nombres.length) return;
+  const nombresSet = new Set(nombres);
+  const items = PAGOS_ITEMS.filter(x=>nombresSet.has(x.b) && (!catKeys || catKeys.includes(x.cat)));
+  if(!items.length) return;
   if(!window.jspdf || !window.jspdf.jsPDF){
     alert("No se pudo cargar el generador de PDF. Revisa tu conexión e intenta de nuevo.");
     return;
   }
-  const ordenados = [...lista].sort((a,b)=>b.s-a.s);
-  const totalGeneral = ordenados.reduce((s,p)=>s+p.s,0);
-  const totalPagos = ordenados.reduce((s,p)=>s+p.c,0);
+
+  // Área (torre/categoría) -> Partida -> Proveedor -> {s,c}
+  const areas = {};
+  items.forEach(x=>{
+    const areaKey = x.cat;
+    const partidaKey = x.sp || "SIN PARTIDA";
+    if(!areas[areaKey]) areas[areaKey] = {total:0, count:0, partidas:{}};
+    const area = areas[areaKey];
+    area.total += x.im; area.count += 1;
+    if(!area.partidas[partidaKey]) area.partidas[partidaKey] = {total:0, count:0, provs:{}};
+    const partida = area.partidas[partidaKey];
+    partida.total += x.im; partida.count += 1;
+    if(!partida.provs[x.b]) partida.provs[x.b] = {n:x.b, s:0, c:0};
+    partida.provs[x.b].s += x.im; partida.provs[x.b].c += 1;
+  });
+  const totalGeneral = items.reduce((s,x)=>s+x.im,0);
+  const totalPagos = items.length;
+  const areaKeysOrdenadas = PAGOS_CAT_ORDER_KEYS.filter(k=>areas[k]);
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:"pt", format:"letter" });
   const marginL = 40;
   const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
   const logoW = 42, logoH = 42 * (417/360);
   const headerTop = 34;
-  let y = headerTop;
+  const topSinMembrete = 40; // páginas después de la primera: sin logo/membrete
 
-  // Membrete con logo: solo en esta primera hoja (autoTable no vuelve a llamar este bloque en páginas siguientes)
+  // Membrete con logo: solo en esta primera hoja
   doc.addImage(PALM_LOGO_B64, "PNG", marginL, headerTop, logoW, logoH);
   doc.setFont("helvetica","bold"); doc.setFontSize(14); doc.setTextColor(31,100,97);
   doc.text("PALM Diamante", marginL + logoW + 14, headerTop + 20);
   doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(90,87,80);
-  doc.text("Resumen de Pagos por Proveedor", marginL + logoW + 14, headerTop + 36);
+  doc.text("Resumen de Pagos por Área y Partida", marginL + logoW + 14, headerTop + 36);
   doc.setDrawColor(63,166,163);
   doc.setLineWidth(1.2);
   doc.line(marginL, headerTop + logoH + 8, pageW-marginL, headerTop + logoH + 8);
-  y = headerTop + logoH + 26;
+  let y = headerTop + logoH + 26;
 
   doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
-  doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${ordenados.length}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}`, marginL, y);
+  doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${nombresSet.size}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}`, marginL, y);
   y += 20;
 
   doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(23,21,18);
   doc.text(`Total: ${fmtMXN(totalGeneral,true)}`, marginL, y);
-  y += 12;
+  y += 14;
   doc.setDrawColor(228,225,215);
   doc.line(marginL, y, pageW-marginL, y);
-  y += 10;
+  y += 14;
 
-  doc.autoTable({
-    startY: y,
-    margin: {left: marginL, right: marginL},
-    head: [["Proveedor","Pagos","Total"]],
-    body: ordenados.map(p=>[p.n, String(p.c), fmtMXN(p.s,true)]),
-    foot: [["TOTAL", String(totalPagos), fmtMXN(totalGeneral,true)]],
-    styles: {fontSize:9, cellPadding:5, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
-    headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
-    footStyles: {fillColor:[31,100,97], textColor:255, fontStyle:"bold"},
-    columnStyles: {1:{cellWidth:55, halign:"right"}, 2:{cellWidth:90, halign:"right"}},
-    theme: "striped",
+  areaKeysOrdenadas.forEach(areaKey=>{
+    const area = areas[areaKey];
+    if(y > pageH-110){ doc.addPage(); y = topSinMembrete; }
+    doc.setFont("helvetica","bold"); doc.setFontSize(12.5); doc.setTextColor(31,100,97);
+    doc.text(PAGOS_CAT_LABELS[areaKey] || areaKey, marginL, y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
+    doc.text(`${fmtMXN(area.total,true)}  ·  ${area.count} pago${area.count===1?"":"s"}`, pageW-marginL, y, {align:"right"});
+    y += 10;
+
+    const partidasOrdenadas = Object.entries(area.partidas).sort((a,b)=>b[1].total-a[1].total);
+    partidasOrdenadas.forEach(([partidaNombre, partida])=>{
+      if(y > pageH-90){ doc.addPage(); y = topSinMembrete; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(23,21,18);
+      doc.text(partidaNombre, marginL+8, y);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90,87,80);
+      doc.text(`${fmtMXN(partida.total,true)}  ·  ${partida.count} pago${partida.count===1?"":"s"}`, pageW-marginL, y, {align:"right"});
+      y += 6;
+
+      const provRows = Object.values(partida.provs).sort((a,b)=>b.s-a.s);
+      doc.autoTable({
+        startY: y,
+        margin: {left: marginL+8, right: marginL},
+        head: [["Proveedor","Pagos","Total"]],
+        body: provRows.map(p=>[p.n, String(p.c), fmtMXN(p.s,true)]),
+        styles: {fontSize:8.5, cellPadding:4, textColor:[40,38,34], lineColor:[228,225,215], lineWidth:0.5},
+        headStyles: {fillColor:[63,166,163], textColor:255, fontStyle:"bold"},
+        columnStyles: {1:{cellWidth:50, halign:"right"}, 2:{cellWidth:80, halign:"right"}},
+        theme: "striped",
+        didDrawPage: () => { y = topSinMembrete; },
+      });
+      y = doc.lastAutoTable.finalY + 14;
+    });
+    y += 6;
   });
 
-  const stamp = esSeleccion ? `Seleccion_${ordenados.length}` : "Todos";
+  if(y > pageH-60){ doc.addPage(); y = topSinMembrete; }
+  doc.setDrawColor(31,100,97);
+  doc.setLineWidth(1.2);
+  doc.line(marginL, y, pageW-marginL, y);
+  y += 18;
+  doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(31,100,97);
+  doc.text(`TOTAL GENERAL: ${fmtMXN(totalGeneral,true)}`, marginL, y);
+
+  const stamp = esSeleccion ? `Seleccion_${nombresSet.size}` : "Todos";
   doc.save(`Resumen_Proveedores_${stamp}.pdf`);
 }
 
