@@ -1452,9 +1452,9 @@ const PALM_LOGO_B64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAAGhCAY
 function drawBandaTotal(doc, x, pageW, pageH, y, marginR, label, montoTxt, topSinMembrete){
   const h = 22;
   if(y + h > pageH - 30){ doc.addPage(); y = topSinMembrete; }
-  doc.setFillColor(255,193,7);
+  doc.setFillColor(31,100,97); // verde/teal de la marca PALM, para que combine con el resto del PDF
   doc.rect(x, y, pageW - marginR - x, h, "F");
-  doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(23,21,18);
+  doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(255,255,255);
   doc.text(label, x+10, y+14.5);
   doc.text(montoTxt, pageW-marginR-10, y+14.5, {align:"right"});
   return y + h + 12;
