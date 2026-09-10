@@ -1384,6 +1384,7 @@ let pvFiltro = "";
 const PV_PAGE_SIZE = 20;
 let pvLimite = {};
 let pvSeleccion = {};
+let pvSoloTotales = {};
 function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   resultsId = resultsId || "pvResults"; hintId = hintId || "pvHint";
   const el = document.getElementById(resultsId);
@@ -1405,6 +1406,7 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
       <div class="qb-selinfo">${seleccionados.length>0 ? `${seleccionados.length} seleccionados · <b>${fmtMXN(totalSeleccion,true)}</b>` : `${filtered.length} proveedor${filtered.length===1?"":"es"} · <b>${fmtMXN(totalFiltrado,true)}</b>`}</div>
       <button type="button" class="qb-pdf-btn" data-pdfresumen="${resultsId}" title="PDF con el total de cada proveedor (sin desglosar pagos)">PDF resumen${seleccionados.length>0?` (${seleccionados.length})`:""}</button>
     </div>
+    <label class="qb-selall" style="margin-top:6px;"><input type="checkbox" data-solototales="${resultsId}" ${pvSoloTotales[resultsId]?"checked":""}> En el PDF, solo totales por torre/partida (sin cada pago individual)</label>
     ${rows.length ? rows.map(p=>`
       <div class="qb-row qb-row-clickable qb-row-check" data-prov="${p.n.replace(/"/g,'&quot;')}">
         <label class="qb-check" onclick="event.stopPropagation()"><input type="checkbox" data-checkprov="${resultsId}" value="${p.n.replace(/"/g,'&quot;')}" ${seleccion.has(p.n)?"checked":""}></label>
@@ -1422,7 +1424,7 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   if(onProvClick) el.querySelectorAll("[data-prov]").forEach(row=>row.addEventListener("click", ()=>onProvClick(row.dataset.prov)));
   el.querySelectorAll("[data-pdfprov]").forEach(btn=>btn.addEventListener("click", (e)=>{
     e.stopPropagation();
-    descargarReportePagosProveedor(btn.dataset.pdfprov, catKeys);
+    descargarReportePagosProveedor(btn.dataset.pdfprov, catKeys, !!pvSoloTotales[resultsId]);
   }));
   const verMasBtn = el.querySelector("[data-vermas]");
   if(verMasBtn) verMasBtn.addEventListener("click", ()=>{
@@ -1442,7 +1444,12 @@ function renderProveedores(cats, catKeys, resultsId, hintId, onProvClick){
   const pdfResumenBtn = el.querySelector("[data-pdfresumen]");
   if(pdfResumenBtn) pdfResumenBtn.addEventListener("click", ()=>{
     const base = seleccionados.length>0 ? seleccionados : filtered;
-    descargarResumenProveedoresPDF(base.map(p=>p.n), catKeys, seleccionados.length>0);
+    descargarResumenProveedoresPDF(base.map(p=>p.n), catKeys, seleccionados.length>0, !!pvSoloTotales[resultsId]);
+  });
+  const soloTotalesChk = el.querySelector("[data-solototales]");
+  if(soloTotalesChk) soloTotalesChk.addEventListener("change", ()=>{
+    pvSoloTotales[resultsId] = soloTotalesChk.checked;
+    renderProveedores(cats, catKeys, resultsId, hintId, onProvClick);
   });
 }
 
@@ -1460,7 +1467,7 @@ function drawBandaTotal(doc, x, pageW, pageH, y, marginR, label, montoTxt, topSi
   return y + h + 12;
 }
 
-function descargarReportePagosProveedor(nombre, catKeys){
+function descargarReportePagosProveedor(nombre, catKeys, soloTotales){
   const items = PAGOS_ITEMS.filter(x=>x.b===nombre && (!catKeys || catKeys.includes(x.cat)));
   if(!items.length) return;
   if(!window.jspdf || !window.jspdf.jsPDF){
@@ -1514,7 +1521,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
   doc.text(nombre, marginL, y);
   y += 17;
   doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
-  doc.text(`Total pagado: ${fmtMXN(total,true)}   ·   ${items.length} pago${items.length===1?"":"s"}   ·   ${fmtFecha(fechasOrd[0])} — ${fmtFecha(fechasOrd[fechasOrd.length-1])}`, marginL, y);
+  doc.text(`Total pagado: ${fmtMXN(total,true)}   ·   ${items.length} pago${items.length===1?"":"s"}   ·   ${fmtFecha(fechasOrd[0])} — ${fmtFecha(fechasOrd[fechasOrd.length-1])}${soloTotales?"   ·   Solo totales por torre/partida":""}`, marginL, y);
   y += 12;
   doc.setDrawColor(228,225,215);
   doc.setLineWidth(0.5);
@@ -1534,6 +1541,10 @@ function descargarReportePagosProveedor(nombre, catKeys){
 
     const partidasOrdenadas = Object.values(area.partidas).sort((a,b)=>b.s-a.s);
     partidasOrdenadas.forEach(g=>{
+      if(soloTotales){
+        y = drawBandaTotal(doc, marginL+8, pageW, pageH, y, marginL, `TOTAL ${g.n} ${areaLabelCorto}`.toUpperCase(), fmtMXN(g.s,true), topSinMembrete);
+        return;
+      }
       if(y > pageH-100){ doc.addPage(); y = topSinMembrete; }
       doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.setTextColor(23,21,18);
       doc.text(g.n, marginL+8, y);
@@ -1560,7 +1571,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
   });
 
   const nombreArchivo = nombre.normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-zA-Z0-9]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60);
-  doc.save(`Pagos_${nombreArchivo}.pdf`);
+  doc.save(`Pagos_${nombreArchivo}${soloTotales?"_Totales":""}.pdf`);
   } catch(err) {
     console.error("Error generando PDF de proveedor:", err);
     alert("No se pudo generar el PDF (" + nombre + "). Error: " + err.message);
@@ -1569,7 +1580,7 @@ function descargarReportePagosProveedor(nombre, catKeys){
 
 /* ---- Reporte en PDF de varios proveedores juntos: totales por Área (Torre 1, Torre 2, Amenidades, etc.)
    y dentro de cada área por Partida, sin desglosar pago por pago ---- */
-function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
+function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion, soloTotales){
   if(!nombres || !nombres.length) return;
   const nombresSet = new Set(nombres);
   const items = PAGOS_ITEMS.filter(x=>nombresSet.has(x.b) && (!catKeys || catKeys.includes(x.cat)));
@@ -1619,7 +1630,7 @@ function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
   let y = headerTop + logoH + 26;
 
   doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(90,87,80);
-  doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${nombresSet.size}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}`, marginL, y);
+  doc.text(`${esSeleccion ? "Proveedores seleccionados" : "Todos los proveedores"}: ${nombresSet.size}   ·   ${totalPagos} pago${totalPagos===1?"":"s"}${soloTotales?"   ·   Solo totales por torre/partida":""}`, marginL, y);
   y += 20;
 
   doc.setFont("helvetica","bold"); doc.setFontSize(13); doc.setTextColor(23,21,18);
@@ -1642,6 +1653,10 @@ function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
 
     const partidasOrdenadas = Object.entries(area.partidas).sort((a,b)=>b[1].total-a[1].total);
     partidasOrdenadas.forEach(([partidaNombre, partida])=>{
+      if(soloTotales){
+        y = drawBandaTotal(doc, marginL+8, pageW, pageH, y, marginL, `TOTAL ${partidaNombre} ${areaLabelCorto}`.toUpperCase(), fmtMXN(partida.total,true), topSinMembrete);
+        return;
+      }
       if(y > pageH-90){ doc.addPage(); y = topSinMembrete; }
       doc.setFont("helvetica","bold"); doc.setFontSize(10); doc.setTextColor(23,21,18);
       doc.text(partidaNombre, marginL+8, y);
@@ -1677,7 +1692,7 @@ function descargarResumenProveedoresPDF(nombres, catKeys, esSeleccion){
   doc.text(`TOTAL GENERAL: ${fmtMXN(totalGeneral,true)}`, marginL, y);
 
   const stamp = esSeleccion ? `Seleccion_${nombresSet.size}` : "Todos";
-  doc.save(`Resumen_Proveedores_${stamp}.pdf`);
+  doc.save(`Resumen_Proveedores_${stamp}${soloTotales?"_Totales":""}.pdf`);
   } catch(err) {
     console.error("Error generando PDF resumen de proveedores:", err);
     alert("No se pudo generar el PDF resumen. Error: " + err.message);
