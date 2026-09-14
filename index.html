@@ -1276,7 +1276,7 @@ function pagePresupuesto(){
 
 const PAGOS_CAT_MAIN = ["t1","t2","amenidades","compartido","general"];
 const PAGOS_CAT_CHICO_INCLUIDO = ["calidad"]; // suma al total, se muestra en tarjeta chica
-const PAGOS_CAT_APARTE = ["soft","seguridad"]; // NO suma al total
+const PAGOS_CAT_APARTE = ["soft","seguridad","ventas"]; // NO suma al total
 function pagosCategoriasParaScope(){
   if(currentScope==="t1") return [PAGOS_REAL.t1];
   if(currentScope==="t2") return [PAGOS_REAL.t2];
@@ -1887,9 +1887,9 @@ function pageControlObraSeccionObra(){
 
   ${aparte.length ? `
   <div class="card" style="margin-bottom:24px;">
-    <div class="card-head"><h3>Aparte del total</h3><span class="hint">Vigilancia — no se suma a Control de Pagos. Soft está en su propia sub-pestaña.</span></div>
+    <div class="card-head"><h3>Aparte del total</h3><span class="hint">Vigilancia — no se suma a Control de Pagos. Soft y Ventas están en sus propias sub-pestañas.</span></div>
     <div class="grid grid-2">
-      ${aparte.filter(c=>c!==PAGOS_REAL.soft).map(c=>`
+      ${aparte.filter(c=>c!==PAGOS_REAL.soft && c!==PAGOS_REAL.ventas).map(c=>`
         <div class="card kpi-card" style="box-shadow:none;background:var(--page);">
           <span class="label">${c.label}</span>
           <span class="value" style="font-size:22px;">${fmtMXN(c.total,true)}</span>
@@ -1946,6 +1946,38 @@ function pageControlObraSeccionSoft(){
     <div class="card-head"><h3>Pagos por proveedor</h3><span class="hint" id="sfPvHint"></span></div>
     <input type="text" id="sfPvInput" class="qb-input" placeholder="Filtrar por nombre de proveedor...">
     <div id="sfPvResults" class="qb-results" style="margin-top:10px;"></div>
+  </div>
+  `;
+}
+function pageControlObraSeccionVentas(){
+  const ventas = PAGOS_REAL.ventas;
+  const chartData = mesesCombinados([ventas], 40);
+  return `
+  <p class="section-sub" style="margin-top:0;">Comisiones de venta y devoluciones por cancelación de departamento — independiente de la obra y de soft, no se suma a esos totales.</p>
+
+  <div class="grid grid-kpi" style="margin-bottom:24px;">
+    <div class="card kpi-card hero">
+      <span class="label">Total pagado en Ventas</span>
+      <span class="value">${fmtMXN(ventas.total,true)}</span>
+      <span class="foot">${ventas.count} pagos registrados</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Consulta rápida</h3><span class="hint">Ej. "comisión venta torre 1", "devolución cancelación"</span></div>
+    <input type="text" id="vtInput" class="qb-input" placeholder="Buscar por proveedor, concepto o partida...">
+    <div id="vtResults" class="qb-results"></div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Pagos por mes</h3><span class="hint">Millones MXN</span></div>
+    <div class="chart-box">${svgPagosMensual(chartData)}</div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h3>Pagos por proveedor</h3><span class="hint" id="vtPvHint"></span></div>
+    <input type="text" id="vtPvInput" class="qb-input" placeholder="Filtrar por nombre de proveedor...">
+    <div id="vtPvResults" class="qb-results" style="margin-top:10px;"></div>
   </div>
   `;
 }
@@ -2259,10 +2291,11 @@ function pageControlObra(){
   <div class="filter-row">
     <button class="galcat-opt ${coTab==="obra"?"active":""}" data-cotab="obra">Obra</button>
     <button class="galcat-opt ${coTab==="soft"?"active":""}" data-cotab="soft">Soft</button>
+    <button class="galcat-opt ${coTab==="ventas"?"active":""}" data-cotab="ventas">Ventas</button>
     <button class="galcat-opt ${coTab==="semanal"?"active":""}" data-cotab="semanal">Revisión Semanal</button>
     ${showPresupuesto ? `<button class="galcat-opt ${coTab==="presupuesto"?"active":""}" data-cotab="presupuesto">Presupuesto vs Real</button>` : ""}
   </div>
-  ${coTab==="soft" ? pageControlObraSeccionSoft() : coTab==="semanal" ? pageControlObraSeccionSemanal() : coTab==="presupuesto" && showPresupuesto ? pageControlObraSeccionPresupuesto() : pageControlObraSeccionObra()}
+  ${coTab==="soft" ? pageControlObraSeccionSoft() : coTab==="ventas" ? pageControlObraSeccionVentas() : coTab==="semanal" ? pageControlObraSeccionSemanal() : coTab==="presupuesto" && showPresupuesto ? pageControlObraSeccionPresupuesto() : pageControlObraSeccionObra()}
   `;
 }
 
@@ -3178,6 +3211,15 @@ function renderAll(){
       const onSfProvClick = (name)=>{ sfInput.value = name; renderPagosSearch(name, ["soft"], "sfResults"); wireTips(root); };
       renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick);
       if(sfPvInput) sfPvInput.addEventListener("input", ()=>{ pvFiltro=sfPvInput.value; pvLimite["sfPvResults"]=PV_PAGE_SIZE; renderProveedores([PAGOS_REAL.soft], ["soft"], "sfPvResults", "sfPvHint", onSfProvClick); });
+    } else if(coTab==="ventas"){
+      const vtInput = document.getElementById("vtInput");
+      if(vtInput) vtInput.addEventListener("input", ()=>{ renderPagosSearch(vtInput.value, ["ventas"], "vtResults"); wireTips(root); });
+
+      const vtPvInput = document.getElementById("vtPvInput");
+      pvFiltro = "";
+      const onVtProvClick = (name)=>{ vtInput.value = name; renderPagosSearch(name, ["ventas"], "vtResults"); wireTips(root); };
+      renderProveedores([PAGOS_REAL.ventas], ["ventas"], "vtPvResults", "vtPvHint", onVtProvClick);
+      if(vtPvInput) vtPvInput.addEventListener("input", ()=>{ pvFiltro=vtPvInput.value; pvLimite["vtPvResults"]=PV_PAGE_SIZE; renderProveedores([PAGOS_REAL.ventas], ["ventas"], "vtPvResults", "vtPvHint", onVtProvClick); });
     } else if(coTab==="semanal"){
       const semInput = document.getElementById("semInput");
       if(semInput) semInput.addEventListener("change", ()=>{ corteSel = semInput.value; renderAll(); });
@@ -3306,10 +3348,11 @@ const PAGOS_CAT_LABELS = {
   amenidades: "Amenidades",
   t2: "Torre 2",
   t3: "Torre 3",
+  ventas: "Ventas (Comisiones y Devoluciones)",
   no_palm: "No PALM",
 };
 // no_palm queda FUERA a propósito: no debe sumar a ningún total de PALM ni aparecer en ninguna pestaña normal.
-const PAGOS_CAT_ORDER_KEYS = ["soft","calidad","general","t1","compartido","seguridad","amenidades","t2","t3"];
+const PAGOS_CAT_ORDER_KEYS = ["soft","calidad","general","t1","compartido","seguridad","amenidades","t2","t3","ventas"];
 const PRESUPUESTO_CAT_LABELS = {t1:"Torre 1", t2:"Torre 2", amenidades:"Amenidades", servicios:"Servicios Generales", t3:"Torre 3"};
 
 function numOrNull(v){ return (v===null || v===undefined) ? null : Number(v); }
