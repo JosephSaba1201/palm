@@ -851,6 +851,14 @@ function pageResumen(){
   const cobradoEtapa1 = torresCorte[0].cobrado + torresCorte[1].cobrado;
   const saldoEtapa1 = torresCorte[0].saldo + torresCorte[1].saldo;
   const chartCobranza = torresCorte.map(r=>({n:r.label, c:r.contratoFirmado, p:r.cobrado}));
+  const chartObra = torresCorte.map(r=>({n:r.label, c:r.contratadoObra, p:r.pagadoObra}));
+
+  // Saldo para terminar la obra de Etapa 1 (contratado - pagado) vs. lo que aún se
+  // puede cobrar: saldo de contratos firmados + inventario disponible por vender.
+  const inventarioDisponibleValor = k => INVENTARIO_REAL.filter(u=>u.t===k && u.s==="disponible").reduce((sum,u)=>sum+(u.rn||0),0);
+  const inventarioDisponibleEtapa1 = inventarioDisponibleValor("t1") + inventarioDisponibleValor("t2");
+  const saldoParaTerminarEtapa1 = contratadoObraEtapa1 - pagadoObraEtapa1;
+  const saldoPorCobrarConInventarioEtapa1 = saldoEtapa1 + inventarioDisponibleEtapa1;
 
   return `
   <h2 class="section-title" style="margin-top:0;">Panorama general</h2>
@@ -877,11 +885,29 @@ function pageResumen(){
 
   <div class="grid grid-12" style="margin-bottom:24px;">
     <div class="card" style="grid-column:span 7;">
-      <div class="card-head"><h3>% cobrado de contratos firmados por Torre</h3><span class="hint">Corte cobranza: ${VENTAS_CORTE}</span></div>
+      <div class="card-head"><h3>Cobranza por Torre — % cobrado de contratos firmados</h3><span class="hint">Corte cobranza: ${VENTAS_CORTE}</span></div>
       <div class="chart-box">${svgPresupuestoVsReal(chartCobranza, 900, "Contrato firmado", "Cobrado")}</div>
+      <div class="qb-breakdown" style="margin-top:2px;">
+        ${torresCorte.map(r=>`
+          <div class="qb-row">
+            <div><div class="qb-cat">${r.label}</div><div class="qb-items">Contrato firmado ${fmtMXN(r.contratoFirmado,true)} · Cobrado ${fmtMXN(r.cobrado,true)} (${fmtPct(r.contratoFirmado?100*r.cobrado/r.contratoFirmado:0)}) · ${r.unidadesContrato} unid.</div></div>
+            <div class="qb-nums tabular"><b>${fmtMXN(r.saldo,true)}</b><br><span class="foot">saldo a escritura</span></div>
+          </div>`).join("")}
+        <div class="qb-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
+          <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">Contrato firmado ${fmtMXN(contratoFirmadoEtapa1,true)} · Cobrado ${fmtMXN(cobradoEtapa1,true)} (${fmtPct(contratoFirmadoEtapa1?100*cobradoEtapa1/contratoFirmadoEtapa1:0)})</div></div>
+          <div class="qb-nums tabular"><b>${fmtMXN(saldoEtapa1,true)}</b><br><span class="foot">saldo a escritura</span></div>
+        </div>
+      </div>
     </div>
     <div class="card" style="grid-column:span 5;">
       <div class="card-head"><h3>Temas que requieren atención</h3><span class="hint">${flags.length} · real</span></div>
+      <div class="risk-card ${saldoParaTerminarEtapa1<=saldoPorCobrarConInventarioEtapa1?"real":"critico"}">
+        <div class="flag"></div>
+        <div class="body">
+          <div class="title">${saldoParaTerminarEtapa1<=saldoPorCobrarConInventarioEtapa1?"🟢":"🔴"} Saldo para terminar Etapa 1 vs. saldo por cobrar</div>
+          <div class="row">Falta pagar <b>${fmtMXN(saldoParaTerminarEtapa1,true)}</b> para terminar lo contratado de obra en Etapa 1, contra <b>${fmtMXN(saldoPorCobrarConInventarioEtapa1,true)}</b> por cobrar (saldo de contratos firmados ${fmtMXN(saldoEtapa1,true)} + inventario disponible por vender ${fmtMXN(inventarioDisponibleEtapa1,true)}).</div>
+        </div>
+      </div>
       ${flags.length ? flags.map(r=>`
         <div class="risk-card ${r.nivel}">
           <div class="flag"></div>
@@ -902,16 +928,17 @@ function pageResumen(){
   </div>
 
   <div class="card">
-    <div class="card-head"><h3>Corte por Torre</h3><span class="hint">Obra: corte ${PAGOS_CORTE} · Cobranza: corte ${VENTAS_CORTE}</span></div>
-    <div class="qb-breakdown">
+    <div class="card-head"><h3>Corte de Obra por Torre — Presupuesto vs. Control de Pagos</h3><span class="hint">Corte pagos: ${PAGOS_CORTE}</span></div>
+    <div class="chart-box">${svgPresupuestoVsReal(chartObra, 900, "Contratado", "Pagado")}</div>
+    <div class="qb-breakdown" style="margin-top:2px;">
       ${torresCorte.map(r=>`
         <div class="qb-row">
-          <div><div class="qb-cat">${r.label}</div><div class="qb-items">${fmtMXN(r.contratadoObra,true)} contratado obra · ${fmtMXN(r.pagadoObra,true)} pagado obra (${fmtPct(r.contratadoObra?100*r.pagadoObra/r.contratadoObra:0)})</div></div>
-          <div class="qb-nums tabular"><b>${fmtPct(r.contratoFirmado?100*r.cobrado/r.contratoFirmado:0)}</b><br><span class="foot">cobrado · saldo ${fmtMXN(r.saldo,true)} · ${r.unidadesContrato} unid.</span></div>
+          <div><div class="qb-cat">${r.label}</div><div class="qb-items">Contratado ${fmtMXN(r.contratadoObra,true)} · Pagado ${fmtMXN(r.pagadoObra,true)}</div></div>
+          <div class="qb-nums tabular"><b>${fmtPct(r.contratadoObra?100*r.pagadoObra/r.contratadoObra:0)}</b><br><span class="foot">pagado</span></div>
         </div>`).join("")}
       <div class="qb-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
-        <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">${fmtMXN(contratadoObraEtapa1,true)} contratado obra · ${fmtMXN(pagadoObraEtapa1,true)} pagado obra (${fmtPct(contratadoObraEtapa1?100*pagadoObraEtapa1/contratadoObraEtapa1:0)})</div></div>
-        <div class="qb-nums tabular"><b>${fmtPct(contratoFirmadoEtapa1?100*cobradoEtapa1/contratoFirmadoEtapa1:0)}</b><br><span class="foot">cobrado · saldo ${fmtMXN(saldoEtapa1,true)}</span></div>
+        <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">Contratado ${fmtMXN(contratadoObraEtapa1,true)} · Pagado ${fmtMXN(pagadoObraEtapa1,true)}</div></div>
+        <div class="qb-nums tabular"><b>${fmtPct(contratadoObraEtapa1?100*pagadoObraEtapa1/contratadoObraEtapa1:0)}</b><br><span class="foot">pagado</span></div>
       </div>
     </div>
   </div>
@@ -3438,6 +3465,7 @@ function buildInventarioReal(rows){
     m2: row.m2===null ? null : String(row.m2),
     s: row.status,
     r: row.precio_lista===null ? null : Number(row.precio_lista).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}),
+    rn: row.precio_lista===null ? null : Number(row.precio_lista),
     d: row.display_code, cor: !!row.comision_corregida, cb: row.comprador,
   }));
 }
