@@ -833,8 +833,6 @@ function pageResumen(){
   const s = scopeData();
   const fin = analisisFinancieroReal();
   const flags = flagsFinancierosReal();
-  const actividadScope = ACTIVIDAD.filter(a=>enScope(a.torre));
-  const semanasScope = SEMANAS.filter(a=>enScope(a.torre));
 
   // Corte por torre: siempre las 3 torres, sin importar el alcance seleccionado --
   // son los datos duros de referencia (obra + cobranza) que no cambian con el filtro.
@@ -842,26 +840,23 @@ function pageResumen(){
   const contratadoDe = k => (PRESUPUESTO_REAL[k] ? PRESUPUESTO_REAL[k].c : 0);
   const torresCorte = ["t1","t2","t3"].map(id=>{
     const t = TORRES.find(x=>x.id===id);
-    const contratado = contratadoDe(id), pagado = pagadoDe(id);
-    const cob = cobranzaResumenTorre(id);
-    return {label:t?.label||id, pctObra:t?.pct, contratado, pagado, ...cob};
+    const contratadoObra = contratadoDe(id), pagadoObra = pagadoDe(id);
+    const cob = cobranzaResumenTorre(id); // {contratado (firmado), cobrado, saldo, unidadesContrato}
+    return {id, label:t?.label||id, contratadoObra, pagadoObra,
+      contratoFirmado:cob.contratado, cobrado:cob.cobrado, saldo:cob.saldo, unidadesContrato:cob.unidadesContrato};
   });
-  const contratadoEtapa1 = PRESUPUESTO_CAT_ORDER.reduce((sum,k)=>sum+contratadoDe(k),0);
-  const pagadoEtapa1 = PAGOS_CAT_MAIN.concat(PAGOS_CAT_CHICO_INCLUIDO).reduce((sum,k)=>sum+pagadoDe(k),0);
+  const contratadoObraEtapa1 = PRESUPUESTO_CAT_ORDER.reduce((sum,k)=>sum+contratadoDe(k),0);
+  const pagadoObraEtapa1 = PAGOS_CAT_MAIN.concat(PAGOS_CAT_CHICO_INCLUIDO).reduce((sum,k)=>sum+pagadoDe(k),0);
+  const contratoFirmadoEtapa1 = torresCorte[0].contratoFirmado + torresCorte[1].contratoFirmado;
+  const cobradoEtapa1 = torresCorte[0].cobrado + torresCorte[1].cobrado;
   const saldoEtapa1 = torresCorte[0].saldo + torresCorte[1].saldo;
-  const pctObraEtapa1 = TORRES.find(t=>t.id==="consolidado")?.pct;
+  const chartCobranza = torresCorte.map(r=>({n:r.label, c:r.contratoFirmado, p:r.cobrado}));
 
   return `
   <h2 class="section-title" style="margin-top:0;">Panorama general</h2>
-  <p class="section-sub">${s.torreLabel}. En menos de 30 segundos: cómo va la obra, cuánto se ha gastado y qué requiere tu atención.</p>
+  <p class="section-sub">${s.torreLabel}. Datos reales: Presupuesto vs. Control de Pagos, y cobranza de Ventas.</p>
 
   <div class="grid grid-kpi" style="margin-bottom:24px;">
-    <div class="card kpi-card hero">
-      <span class="label">Avance físico<span class="badge-proceso">En proceso</span></span>
-      <span class="value">${s.fisico}<small>%</small></span>
-      <div class="progress-track"><div class="progress-fill" style="width:${s.fisico}%"></div></div>
-      <span class="foot">Dato de ejemplo, aún no conectado a un reporte de avance físico real.</span>
-    </div>
     <div class="card kpi-card hero">
       <span class="label">Avance de pago (real)</span>
       <span class="value">${fmtPct(fin.pct)}</span>
@@ -878,36 +873,12 @@ function pageResumen(){
       <span class="value" style="font-size:26px;">${fmtMXN(fin.pagado,true)}</span>
       <span class="foot">Pendiente: ${fmtMXN(fin.pendiente,true)} &nbsp;·&nbsp; Corte pagos: ${PAGOS_CORTE}</span>
     </div>
-    <div class="card kpi-card">
-      <span class="label">Estado general<span class="badge-proceso">En proceso</span></span>
-      <span class="status-pill muted" style="margin-top:2px;background:var(--warning-soft);color:var(--warning-text);"><span class="dot" style="background:var(--warning-fill);"></span>Dato de ejemplo</span>
-      <span class="foot" style="margin-top:8px;">Entrega estimada aún no conectada a un cronograma real.</span>
-    </div>
-  </div>
-
-  <div class="card" style="margin-bottom:24px;">
-    <div class="card-head"><h3>Corte por Torre</h3><span class="hint">Obra: corte ${PAGOS_CORTE} · Cobranza: corte ${VENTAS_CORTE}</span></div>
-    <div class="qb-breakdown">
-      ${torresCorte.map(r=>`
-        <div class="qb-row">
-          <div><div class="qb-cat">${r.label}</div><div class="qb-items">${r.pctObra!=null?r.pctObra+"% avance físico · ":""}${fmtMXN(r.contratado,true)} contratado · ${fmtMXN(r.pagado,true)} pagado (${fmtPct(r.contratado?100*r.pagado/r.contratado:0)})</div></div>
-          <div class="qb-nums tabular"><b>${fmtMXN(r.saldo,true)}</b><br><span class="foot">${r.unidadesContrato} unid. en contrato · saldo por cobrar</span></div>
-        </div>`).join("")}
-      <div class="qb-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
-        <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">${pctObraEtapa1!=null?pctObraEtapa1+"% avance físico · ":""}${fmtMXN(contratadoEtapa1,true)} contratado · ${fmtMXN(pagadoEtapa1,true)} pagado (${fmtPct(contratadoEtapa1?100*pagadoEtapa1/contratadoEtapa1:0)})</div></div>
-        <div class="qb-nums tabular"><b>${fmtMXN(saldoEtapa1,true)}</b><br><span class="foot">saldo por cobrar</span></div>
-      </div>
-    </div>
   </div>
 
   <div class="grid grid-12" style="margin-bottom:24px;">
     <div class="card" style="grid-column:span 7;">
-      <div class="card-head"><h3>Avance programado vs. real<span class="badge-proceso">En proceso</span></h3><span class="hint">% físico acumulado (ejemplo)</span></div>
-      <div class="legend-inline">
-        <span><i style="background:var(--accent)"></i>Real</span>
-        <span><i style="background:var(--plan)"></i>Programado</span>
-      </div>
-      <div class="chart-box">${svgCurvaS(s.curvaS)}</div>
+      <div class="card-head"><h3>% cobrado de contratos firmados por Torre</h3><span class="hint">Corte cobranza: ${VENTAS_CORTE}</span></div>
+      <div class="chart-box">${svgPresupuestoVsReal(chartCobranza, 900, "Contrato firmado", "Cobrado")}</div>
     </div>
     <div class="card" style="grid-column:span 5;">
       <div class="card-head"><h3>Temas que requieren atención</h3><span class="hint">${flags.length} · real</span></div>
@@ -930,40 +901,18 @@ function pageResumen(){
     </div>
   </div>
 
-  <div class="grid grid-12" style="margin-bottom:24px;">
-    <div class="card" style="grid-column:span 8;">
-      <div class="card-head"><h3>¿Qué está pasando actualmente en PALM?<span class="badge-proceso">En proceso</span></h3></div>
-      <div class="grid grid-3">
-        ${actividadScope.map(a=>`
-          <div class="card activity-card" style="box-shadow:none;background:var(--page);">
-            <div class="top"><span class="tag">${TORRES.find(t=>t.id===a.torre)?.label || "Global"}</span></div>
-            <div>${a.partida}</div>
-            <span class="avance">${a.avance}%</span>
-            <p>${a.nota}</p>
-          </div>`).join("")}
-      </div>
-    </div>
-    <div class="card" style="grid-column:span 4;">
-      <div class="card-head"><h3>Próximos hitos<span class="badge-proceso">En proceso</span></h3></div>
-      <div class="hitos-timeline">
-        ${HITOS.filter(h=>h.estado!=="completado").slice(0,4).map((h,i,arr)=>`
-          <div class="hito ${h.estado}">
-            <div class="rail"><div class="node"></div>${i<arr.length-1?'<div class="stem"></div>':''}</div>
-            <div class="content"><h4>${h.nombre}</h4><div class="meta">${h.fecha}</div></div>
-          </div>`).join("")}
-      </div>
-    </div>
-  </div>
-
   <div class="card">
-    <div class="card-head"><h3>Próximas 4 semanas<span class="badge-proceso">En proceso</span></h3></div>
-    <div class="week-strip">
-      ${semanasScope.map(w=>`
-        <div class="week-card">
-          <div class="num">${w.semana}</div>
-          <div class="dates">${w.fechas}</div>
-          <p>${w.nota}</p>
+    <div class="card-head"><h3>Corte por Torre</h3><span class="hint">Obra: corte ${PAGOS_CORTE} · Cobranza: corte ${VENTAS_CORTE}</span></div>
+    <div class="qb-breakdown">
+      ${torresCorte.map(r=>`
+        <div class="qb-row">
+          <div><div class="qb-cat">${r.label}</div><div class="qb-items">${fmtMXN(r.contratadoObra,true)} contratado obra · ${fmtMXN(r.pagadoObra,true)} pagado obra (${fmtPct(r.contratadoObra?100*r.pagadoObra/r.contratadoObra:0)})</div></div>
+          <div class="qb-nums tabular"><b>${fmtPct(r.contratoFirmado?100*r.cobrado/r.contratoFirmado:0)}</b><br><span class="foot">cobrado · saldo ${fmtMXN(r.saldo,true)} · ${r.unidadesContrato} unid.</span></div>
         </div>`).join("")}
+      <div class="qb-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
+        <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">${fmtMXN(contratadoObraEtapa1,true)} contratado obra · ${fmtMXN(pagadoObraEtapa1,true)} pagado obra (${fmtPct(contratadoObraEtapa1?100*pagadoObraEtapa1/contratadoObraEtapa1:0)})</div></div>
+        <div class="qb-nums tabular"><b>${fmtPct(contratoFirmadoEtapa1?100*cobradoEtapa1/contratoFirmadoEtapa1:0)}</b><br><span class="foot">cobrado · saldo ${fmtMXN(saldoEtapa1,true)}</span></div>
+      </div>
     </div>
   </div>
   `;
