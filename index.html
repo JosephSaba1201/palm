@@ -3072,9 +3072,54 @@ function pageReporte(){
   `;
 }
 
+/* ---- Página oculta (no aparece en el menú, solo por URL #no-palm): pagos identificados
+   como de otra propiedad/proyecto, con categoria="no_palm" -- fuera de PAGOS_CAT_ORDER_KEYS
+   así que no entran en ningún total ni vista normal de PALM. ---- */
+function pageNoPalm(){
+  const items = PAGOS_ITEMS.filter(x=>x.cat==="no_palm");
+  const total = items.reduce((s,x)=>s+x.im,0);
+  const provMap = {};
+  items.forEach(x=>{
+    if(!provMap[x.b]) provMap[x.b] = {n:x.b, s:0, c:0};
+    provMap[x.b].s += x.im; provMap[x.b].c += 1;
+  });
+  const provs = Object.values(provMap).sort((a,b)=>b.s-a.s);
+  const itemsOrdenados = items.slice().sort((a,b)=>a.f<b.f?1:(a.f>b.f?-1:0));
+  return `
+  <div>
+    <span class="id">PALM · Página oculta</span>
+    <h2 class="section-title" style="margin:2px 0 0;">No PALM</h2>
+    <p class="section-sub" style="margin-top:4px;">Pagos identificados como de otra propiedad/proyecto (ej. Armando's Le Club). No aparecen en ningún total ni pestaña de PALM — esta página no está en el menú, solo se llega con el link directo.</p>
+  </div>
+  <div class="qb-total" style="margin:16px 0 20px;">
+    <span>Total identificado como NO PALM</span><b>${fmtMXN(total,true)}</b>
+  </div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-head"><h3>Por proveedor</h3><span class="hint">${provs.length} proveedor${provs.length===1?"":"es"} · ${items.length} pago${items.length===1?"":"s"}</span></div>
+    <div class="qb-breakdown">
+      ${provs.length ? provs.map(p=>`
+        <div class="qb-row">
+          <div><div class="qb-cat">${p.n}</div><div class="qb-items">${p.c} pago${p.c===1?"":"s"}</div></div>
+          <div class="qb-nums tabular"><b>${fmtMXN(p.s,true)}</b></div>
+        </div>`).join("") : `<p class="foot">Sin pagos marcados como No PALM.</p>`}
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><h3>Detalle de pagos</h3></div>
+    <div class="qb-breakdown">
+      ${itemsOrdenados.map(x=>`
+        <div class="qb-row">
+          <div><div class="qb-cat">${x.b}</div><div class="qb-items">${fmtFecha(x.f)} · ${x.co}${x.op?` · ${x.op}`:""}</div></div>
+          <div class="qb-nums tabular"><b>${fmtMXN(x.im,true)}</b></div>
+        </div>`).join("")}
+    </div>
+  </div>
+  `;
+}
+
 /* ============================================================ RENDER / ROUTER ============================================================ */
-const PAGES = {resumen:pageResumen, avance:pageAvance, finanzas:pageFinanzas, presupuesto:pagePresupuesto, controlobra:pageControlObra, ventas:pageVentas, cronograma:pageCronograma, galeria:pageGaleria, reporte:pageReporte};
-const TITLES = {resumen:["Panorama general","Resumen"], avance:["Seguimiento de obra","Avance de Obra"], finanzas:["Control financiero","Finanzas"], presupuesto:["Detalle presupuestal","Presupuesto"], controlobra:["Pagos reales por partida y proveedor","Control de Pagos"], ventas:["Inventario y cobranza","Ventas"], cronograma:["Planeación","Cronograma"], galeria:["Bitácora fotográfica","Galería"], reporte:["Exportable","Reporte Ejecutivo"]};
+const PAGES = {resumen:pageResumen, avance:pageAvance, finanzas:pageFinanzas, presupuesto:pagePresupuesto, controlobra:pageControlObra, ventas:pageVentas, cronograma:pageCronograma, galeria:pageGaleria, reporte:pageReporte, nopalm:pageNoPalm};
+const TITLES = {resumen:["Panorama general","Resumen"], avance:["Seguimiento de obra","Avance de Obra"], finanzas:["Control financiero","Finanzas"], presupuesto:["Detalle presupuestal","Presupuesto"], controlobra:["Pagos reales por partida y proveedor","Control de Pagos"], ventas:["Inventario y cobranza","Ventas"], cronograma:["Planeación","Cronograma"], galeria:["Bitácora fotográfica","Galería"], reporte:["Exportable","Reporte Ejecutivo"], nopalm:["Página oculta","No PALM"]};
 
 function renderSidebar(){
   const etapa1 = TORRES.find(t=>t.id==="consolidado");
@@ -3282,7 +3327,9 @@ const PAGOS_CAT_LABELS = {
   amenidades: "Amenidades",
   t2: "Torre 2",
   t3: "Torre 3",
+  no_palm: "No PALM",
 };
+// no_palm queda FUERA a propósito: no debe sumar a ningún total de PALM ni aparecer en ninguna pestaña normal.
 const PAGOS_CAT_ORDER_KEYS = ["soft","calidad","general","t1","compartido","seguridad","amenidades","t2","t3"];
 const PRESUPUESTO_CAT_LABELS = {t1:"Torre 1", t2:"Torre 2", amenidades:"Amenidades", servicios:"Servicios Generales", t3:"Torre 3"};
 
@@ -3470,6 +3517,8 @@ async function bootstrapData(){
     COMISIONES_POR_DEPTO = buildComisionesPorDepto(COMISIONES_ITEMS);
     VENTAS_REAL = buildVentasReal(ventasRows);
     INVENTARIO_REAL = buildInventarioReal(inventarioRows);
+
+    if(location.hash === "#no-palm") currentPage = "nopalm"; // página oculta, no está en el menú
 
     renderSidebar();
     renderAll();
