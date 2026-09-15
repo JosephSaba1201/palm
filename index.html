@@ -860,8 +860,12 @@ function pageResumen(){
   const saldoParaTerminarEtapa1 = contratadoObraEtapa1 - pagadoObraEtapa1;
   const saldoPorCobrarConInventarioEtapa1 = saldoEtapa1 + inventarioDisponibleEtapa1;
 
-  // Costo total (contratado de obra) vs. ingreso total (contratos firmados) de Etapa 1.
-  const costoTotalEtapa1 = contratadoObraEtapa1;
+  // Costo total (contratado de obra + comisiones pagadas) vs. ingreso total
+  // (contratos firmados) de Etapa 1. Comisiones se identifican por torre a partir
+  // del concepto de cada pago (ver COMISIONES_POR_DEPTO / buildComisionesPorDepto).
+  const comisionesEtapa1 = COMISIONES_POR_DEPTO.unidades.filter(u=>u.torre==="t1"||u.torre==="t2").reduce((sum,u)=>sum+u.total,0);
+  const costoObraEtapa1 = contratadoObraEtapa1;
+  const costoTotalEtapa1 = costoObraEtapa1 + comisionesEtapa1;
   const ingresoTotalEtapa1 = contratoFirmadoEtapa1;
   const margenEtapa1 = costoTotalEtapa1 - ingresoTotalEtapa1;
 
@@ -917,7 +921,8 @@ function pageResumen(){
         <div class="flag"></div>
         <div class="body">
           <div class="title">${margenEtapa1<=0?"🟢":"🔴"} Costo total vs. ingreso total de Etapa 1</div>
-          <div class="row">Costo total, contratado de obra (<b>${fmtMXN(costoTotalEtapa1,true)}</b>) − ingreso total, contratos firmados (<b>${fmtMXN(ingresoTotalEtapa1,true)}</b>) = <b>${fmtMXN(margenEtapa1,true)}</b> ${margenEtapa1<=0?"(el ingreso cubre el costo)":"(el costo supera el ingreso)"}.</div>
+          <div class="row">Costo total (<b>${fmtMXN(costoTotalEtapa1,true)}</b>: obra ${fmtMXN(costoObraEtapa1,true)} + comisiones pagadas ${fmtMXN(comisionesEtapa1,true)}) − ingreso total, contratos firmados (<b>${fmtMXN(ingresoTotalEtapa1,true)}</b>) = <b>${fmtMXN(margenEtapa1,true)}</b> de saldo ${margenEtapa1<=0?"a favor (el ingreso cubre el costo)":"en contra (el costo supera el ingreso)"}.</div>
+          ${COMISIONES_POR_DEPTO.sinDepto.count ? `<div class="row foot">No incluye ${fmtMXN(COMISIONES_POR_DEPTO.sinDepto.total,true)} en ${COMISIONES_POR_DEPTO.sinDepto.count} comisiones sin torre identificada en el concepto.</div>` : ""}
         </div>
       </div>
       ${flags.length ? flags.map(r=>`
