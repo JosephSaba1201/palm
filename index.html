@@ -860,6 +860,11 @@ function pageResumen(){
   const saldoParaTerminarEtapa1 = contratadoObraEtapa1 - pagadoObraEtapa1;
   const saldoPorCobrarConInventarioEtapa1 = saldoEtapa1 + inventarioDisponibleEtapa1;
 
+  // Costo total (contratado de obra) vs. ingreso total (contratos firmados) de Etapa 1.
+  const costoTotalEtapa1 = contratadoObraEtapa1;
+  const ingresoTotalEtapa1 = contratoFirmadoEtapa1;
+  const margenEtapa1 = costoTotalEtapa1 - ingresoTotalEtapa1;
+
   return `
   <h2 class="section-title" style="margin-top:0;">Panorama general</h2>
   <p class="section-sub">${s.torreLabel}. Datos reales: Presupuesto vs. Control de Pagos, y cobranza de Ventas.</p>
@@ -906,6 +911,13 @@ function pageResumen(){
         <div class="body">
           <div class="title">${saldoParaTerminarEtapa1<=saldoPorCobrarConInventarioEtapa1?"🟢":"🔴"} Saldo para terminar Etapa 1 vs. saldo por cobrar</div>
           <div class="row">Falta pagar <b>${fmtMXN(saldoParaTerminarEtapa1,true)}</b> para terminar lo contratado de obra en Etapa 1, contra <b>${fmtMXN(saldoPorCobrarConInventarioEtapa1,true)}</b> por cobrar (saldo de contratos firmados ${fmtMXN(saldoEtapa1,true)} + inventario disponible por vender ${fmtMXN(inventarioDisponibleEtapa1,true)}).</div>
+        </div>
+      </div>
+      <div class="risk-card ${margenEtapa1<=0?"real":"critico"}">
+        <div class="flag"></div>
+        <div class="body">
+          <div class="title">${margenEtapa1<=0?"🟢":"🔴"} Costo total vs. ingreso total de Etapa 1</div>
+          <div class="row">Costo total, contratado de obra (<b>${fmtMXN(costoTotalEtapa1,true)}</b>) − ingreso total, contratos firmados (<b>${fmtMXN(ingresoTotalEtapa1,true)}</b>) = <b>${fmtMXN(margenEtapa1,true)}</b> ${margenEtapa1<=0?"(el ingreso cubre el costo)":"(el costo supera el ingreso)"}.</div>
         </div>
       </div>
       ${flags.length ? flags.map(r=>`
