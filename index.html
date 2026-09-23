@@ -2443,9 +2443,45 @@ function renderClientesLista(){
 }
 
 let ventasTab = "resumen";
+// Valor de venta (precio_venta) de todas las unidades en el alcance, agrupado en 3 partidas
+// que en conjunto cubren el 100% de las unidades -- a diferencia de sumar "Contrato firmado"
+// (Cobranza) + "$ inventario restante" (Inventario) a mano, que deja fuera Apartado/Reservado
+// y por eso el total no cuadraba con el valor real del proyecto.
+function ventasResumenPorEstatus(){
+  const us = VENTAS_REAL.filter(u=>enScope(u.t));
+  const grupo = (label, statuses) => {
+    const list = us.filter(u=>statuses.includes(u.s));
+    return {label, valor: list.reduce((s,u)=>s+u.pv,0), unidades: list.length};
+  };
+  const partidas = [
+    grupo("Contrato (vendido)", ["Contrato"]),
+    grupo("Disponible (inventario)", ["Disponible"]),
+    grupo("Apartado + Reservado", ["Apartado","Reservado"]),
+  ];
+  const total = {
+    valor: partidas.reduce((s,p)=>s+p.valor,0),
+    unidades: partidas.reduce((s,p)=>s+p.unidades,0),
+  };
+  return {partidas, total};
+}
 function pageVentasResumen(){
   const cv = COMISIONES_VENTAS;
+  const {partidas, total} = ventasResumenPorEstatus();
+  const fila = (label,r,bold)=>`
+    <div class="qb-row" ${bold?'style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;"':''}>
+      <div><div class="qb-cat" ${bold?'style="font-weight:700;"':''}>${label}</div><div class="qb-items">${r.unidades} unidad${r.unidades===1?"":"es"}</div></div>
+      <div class="qb-nums tabular"><b>${fmtMXN(r.valor,true)}</b></div>
+    </div>`;
   return `
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Resumen de ventas por estatus</h3><span class="hint">Alcance: ${scopeData().label}</span></div>
+    <p class="foot" style="margin:-6px 0 12px;">Valor de venta de todas las unidades del alcance, las 3 partidas suman el 100% (no se excluye ningún estatus).</p>
+    <div class="qb-breakdown">
+      ${partidas.map(p=>fila(p.label, p)).join("")}
+      ${fila("Total "+scopeData().label, total, true)}
+    </div>
+  </div>
+
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
       <span class="label">Comisiones de venta pagadas · todo el proyecto</span>
