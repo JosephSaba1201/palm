@@ -2454,9 +2454,9 @@ function ventasResumenPorEstatus(){
     return {label, valor: list.reduce((s,u)=>s+u.pv,0), unidades: list.length};
   };
   const partidas = [
-    grupo("Contrato (vendido)", ["Contrato"]),
-    grupo("Disponible (inventario)", ["Disponible"]),
-    grupo("Apartado + Reservado", ["Apartado","Reservado"]),
+    grupo("Inventario", ["Disponible"]),
+    grupo("Apartados/Reservados", ["Apartado","Reservado"]),
+    grupo("Contratos/Cobranza", ["Contrato"]),
   ];
   const total = {
     valor: partidas.reduce((s,p)=>s+p.valor,0),
@@ -2983,7 +2983,7 @@ function pageVentas(){
   <div class="filter-row" style="margin-bottom:20px;">
     <button class="galcat-opt ${ventasTab==="resumen"?"active":""}" data-ventastab="resumen">Resumen</button>
     <button class="galcat-opt ${ventasTab==="inventario"?"active":""}" data-ventastab="inventario">Inventario</button>
-    <button class="galcat-opt ${ventasTab==="cobranza"?"active":""}" data-ventastab="cobranza">Cobranza</button>
+    <button class="galcat-opt ${ventasTab==="cobranza"?"active":""}" data-ventastab="cobranza">Contratos/Cobranza</button>
     <button class="galcat-opt ${ventasTab==="corte1"?"active":""}" data-ventastab="corte1">Corte Torre 1</button>
     <button class="galcat-opt ${ventasTab==="comisiones"?"active":""}" data-ventastab="comisiones">Comisiones por departamento</button>
   </div>
