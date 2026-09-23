@@ -2449,14 +2449,14 @@ let ventasTab = "resumen";
 // y por eso el total no cuadraba con el valor real del proyecto.
 function ventasResumenPorEstatus(){
   const us = VENTAS_REAL.filter(u=>enScope(u.t));
-  const grupo = (label, statuses) => {
+  const grupo = (label, statuses, color) => {
     const list = us.filter(u=>statuses.includes(u.s));
-    return {label, valor: list.reduce((s,u)=>s+u.pv,0), unidades: list.length};
+    return {label, color, valor: list.reduce((s,u)=>s+u.pv,0), unidades: list.length};
   };
   const partidas = [
-    grupo("Inventario", ["Disponible"]),
-    grupo("Apartados/Reservados", ["Apartado","Reservado"]),
-    grupo("Contratos/Cobranza", ["Contrato"]),
+    grupo("Inventario (Disponible)", ["Disponible"], "var(--cat-1)"),
+    grupo("Apartados/Reservados", ["Apartado","Reservado"], "var(--cat-4)"),
+    grupo("Contratos", ["Contrato"], "var(--cat-3)"),
   ];
   const total = {
     valor: partidas.reduce((s,p)=>s+p.valor,0),
@@ -2467,18 +2467,24 @@ function ventasResumenPorEstatus(){
 function pageVentasResumen(){
   const cv = COMISIONES_VENTAS;
   const {partidas, total} = ventasResumenPorEstatus();
-  const fila = (label,r,bold)=>`
-    <div class="qb-row" ${bold?'style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;"':''}>
-      <div><div class="qb-cat" ${bold?'style="font-weight:700;"':''}>${label}</div><div class="qb-items">${r.unidades} unidad${r.unidades===1?"":"es"}</div></div>
-      <div class="qb-nums tabular"><b>${fmtMXN(r.valor,true)}</b></div>
-    </div>`;
+  const pct = v => total.valor ? 100*v/total.valor : 0;
   return `
   <div class="card" style="margin-bottom:24px;">
-    <div class="card-head"><h3>Resumen de ventas por estatus</h3><span class="hint">Alcance: ${scopeData().label}</span></div>
-    <p class="foot" style="margin:-6px 0 12px;">Valor de venta de todas las unidades del alcance, las 3 partidas suman el 100% (no se excluye ningún estatus).</p>
-    <div class="qb-breakdown">
-      ${partidas.map(p=>fila(p.label, p)).join("")}
-      ${fila("Total "+scopeData().label, total, true)}
+    <div class="card-head"><h3>Resumen de ventas</h3><span class="hint">Alcance: ${scopeData().label}</span></div>
+    <div style="margin:14px 0 4px;">
+      <span style="font-family:var(--font-display);font-size:34px;color:var(--accent-ink);font-weight:600;">${fmtMXN(total.valor,true)}</span>
+      <span class="foot" style="margin-left:8px;">${total.unidades} unidades</span>
+    </div>
+    <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line);margin:12px 0 18px;">
+      ${partidas.map(p=>`<div style="width:${pct(p.valor)}%;background:${p.color};" title="${p.label}"></div>`).join("")}
+    </div>
+    <div class="grid grid-kpi">
+      ${partidas.map(p=>`
+        <div class="card kpi-card" style="box-shadow:none;background:var(--page);">
+          <span class="label" style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block;flex:none;"></span>${p.label}</span>
+          <span class="value" style="font-size:22px;">${fmtMXN(p.valor,true)}</span>
+          <span class="foot">${p.unidades} unidad${p.unidades===1?"":"es"} · ${fmtPct(pct(p.valor))}</span>
+        </div>`).join("")}
     </div>
   </div>
 
