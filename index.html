@@ -2410,24 +2410,17 @@ function renderClientesLista(){
   };
   let html = `<div class="qb-toolbar" style="margin-top:0;margin-bottom:4px;">${clSortOptionsHtml()}</div>`;
   let anyMatch = false;
-  ["t1","t2","t3"].forEach(t=>{
-    const mods = Object.keys(grupos[t]).sort();
-    const filteredMods = mods.map(m=>({m, list: sortList(grupos[t][m].filter(matches))})).filter(g=>g.list.length);
-    if(!filteredMods.length) return;
+  ["t1","t2","t3"].filter(t=>enScope(t)).forEach(t=>{
+    const mods = Object.keys(grupos[t]);
+    const list = sortList(mods.flatMap(m=>grupos[t][m]).filter(matches));
+    if(!list.length) return;
     anyMatch = true;
-    const totalUnidades = filteredMods.reduce((s,g)=>s+g.list.length,0);
-    html += `<div class="card-head" style="padding:0 4px;margin-top:18px;"><h3 style="font-size:15px;">${torreLbl[t]}</h3><span class="hint">${totalUnidades} unidad${totalUnidades===1?"":"es"}</span></div>
-    <div class="grid grid-2" style="margin-top:10px;">
-      ${filteredMods.map(g=>`
-        <div class="card" style="box-shadow:none;background:var(--page);">
-          <div class="card-head"><h3 style="font-size:13px;">Módulo ${g.m}</h3><span class="hint">${g.list.length}</span></div>
-          <div class="qb-breakdown">
-            ${g.list.map(u=>`
-              <div class="qb-row">
-                <div><div class="qb-cat">${u.depto}</div><div class="qb-items">${u.comprador}</div></div>
-                <div class="qb-nums tabular">${fmtMXN(u.precio,true)}</div>
-              </div>`).join("")}
-          </div>
+    html += `<div class="card-head" style="padding:0 4px;margin-top:18px;"><h3 style="font-size:15px;">${torreLbl[t]}</h3><span class="hint">${list.length} unidad${list.length===1?"":"es"}</span></div>
+    <div class="qb-breakdown" style="margin-top:10px;">
+      ${list.map(u=>`
+        <div class="qb-row">
+          <div><div class="qb-cat">${u.depto}</div><div class="qb-items">${u.comprador}</div></div>
+          <div class="qb-nums tabular">${fmtMXN(u.precio,true)}</div>
         </div>`).join("")}
     </div>`;
   });
@@ -2442,14 +2435,14 @@ function pageVentasResumen(){
   return `
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
-      <span class="label">Comisiones de venta pagadas</span>
+      <span class="label">Comisiones de venta pagadas · todo el proyecto</span>
       <span class="value">${fmtMXN(cv.total,true)}</span>
-      <span class="foot">${cv.count} pagos registrados</span>
+      <span class="foot">${cv.count} pagos registrados · no se filtra por alcance (un asesor puede cobrar comisión de varias torres)</span>
     </div>
   </div>
 
   <div class="card">
-    <div class="card-head"><h3>Clientes por torre y módulo</h3><span class="hint">${COMISIONES_POR_DEPTO.unidades.length} unidades identificadas</span></div>
+    <div class="card-head"><h3>Clientes por torre</h3><span class="hint">${COMISIONES_POR_DEPTO.unidades.filter(u=>enScope(u.torre)).length} unidades identificadas · alcance: ${scopeData().label}</span></div>
     <p class="foot" style="margin:-6px 0 12px;">Armado a partir del concepto de las comisiones pagadas — puede no incluir el 100% de las unidades vendidas.</p>
     <input type="text" id="clInput" class="qb-input" placeholder="Buscar cliente, depto o módulo (ej. Cecilia Ajuria, 703A, módulo B)...">
     <div id="clResults" style="margin-top:14px;"></div>
@@ -2513,7 +2506,7 @@ function invChip(u){
 function renderInventarioLista(){
   const el = document.getElementById("invResults");
   if(!el) return;
-  let list = INVENTARIO_REAL;
+  let list = INVENTARIO_REAL.filter(u=>enScope(u.t));
   if(invFiltroEstado!=="todas") list = list.filter(u=>u.s===invFiltroEstado);
   if(invFiltroTexto){
     const q = normTxt(invFiltroTexto);
@@ -2557,12 +2550,30 @@ function renderInventarioLista(){
   }).join("");
 }
 function pageVentasInventario(){
-  const torres = [["t1","Torre 1"],["t2","Torre 2"],["t3","Torre 3"]];
+  const torresTodas = [["t1","Torre 1"],["t2","Torre 2"],["t3","Torre 3"]];
+  const torres = torresTodas.filter(([t])=>enScope(t));
+  if(torres.length===0){
+    return `<p class="section-sub" style="margin-top:0;">Inventario disponible por torre. Amenidades no tiene unidades de venta propias -- selecciona Etapa 1, una torre, o Torre 3 en el panel de Alcance.</p>`;
+  }
   const resumenes = torres.map(([t,label])=>({t,label,...inventarioResumenTorre(t)}));
   const totalG = resumenes.reduce((s,r)=>s+r.total,0);
   const colocadoG = resumenes.reduce((s,r)=>s+r.colocado,0);
+  const restanteTorre = t => {
+    const us = VENTAS_REAL.filter(u=>u.t===t && u.s==="Disponible");
+    return {valor: us.reduce((s,u)=>s+u.pv,0), unidades: us.length};
+  };
+  const restantes = torres.map(([t,label])=>({label, ...restanteTorre(t)}));
+  const restanteTotal = {
+    valor: restantes.reduce((s,r)=>s+r.valor,0),
+    unidades: restantes.reduce((s,r)=>s+r.unidades,0),
+  };
+  const fila = (label,r,bold)=>`
+    <div class="qb-row" ${bold?'style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;"':''}>
+      <div><div class="qb-cat" ${bold?'style="font-weight:700;"':''}>${label}</div><div class="qb-items">${r.unidades} unidades disponibles</div></div>
+      <div class="qb-nums tabular"><b>${fmtMXN(r.valor,true)}</b><br><span class="foot">valor de inventario</span></div>
+    </div>`;
   return `
-  <p class="section-sub" style="margin-top:0;">Armado a partir de la lista de precios (corte ${INVENTARIO_CORTE}), corregido contra Comisiones por departamento: ${INVENTARIO_REAL.filter(u=>u.cor).length} unidades que la lista marcaba "Disponible" en realidad ya tienen comisión pagada.</p>
+  <p class="section-sub" style="margin-top:0;">Armado a partir de la lista de precios (corte ${INVENTARIO_CORTE}), corregido contra Comisiones por departamento: ${INVENTARIO_REAL.filter(u=>u.cor).length} unidades que la lista marcaba "Disponible" en realidad ya tienen comisión pagada. Alcance: ${scopeData().label}.</p>
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     ${resumenes.map(r=>`
       <div class="card kpi-card hero">
@@ -2571,38 +2582,21 @@ function pageVentasInventario(){
         <div class="progress-track"><div class="progress-fill" style="width:${Math.min(r.pct,100)}%;"></div></div>
         <span class="foot">${r.colocado} de ${r.total} unidades · ${r.disponible} disponibles</span>
       </div>`).join("")}
+    ${resumenes.length>1 ? `
     <div class="card kpi-card">
-      <span class="label">Total proyecto</span>
+      <span class="label">Total ${scopeData().label}</span>
       <span class="value" style="font-size:26px;">${fmtPct(totalG?100*colocadoG/totalG:0)}</span>
       <span class="foot">${colocadoG} de ${totalG} unidades colocadas</span>
-    </div>
+    </div>` : ""}
   </div>
 
-  ${(()=>{
-    const restanteTorre = t => {
-      const us = VENTAS_REAL.filter(u=>u.t===t && u.s==="Disponible");
-      return {valor: us.reduce((s,u)=>s+u.pv,0), unidades: us.length};
-    };
-    const t1 = restanteTorre("t1"), t2 = restanteTorre("t2"), t3 = restanteTorre("t3");
-    const etapa1 = {valor:t1.valor+t2.valor, unidades:t1.unidades+t2.unidades};
-    const total = {valor:etapa1.valor+t3.valor, unidades:etapa1.unidades+t3.unidades};
-    const fila = (label,r,bold)=>`
-      <div class="qb-row" ${bold?'style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;"':''}>
-        <div><div class="qb-cat" ${bold?'style="font-weight:700;"':''}>${label}</div><div class="qb-items">${r.unidades} unidades disponibles</div></div>
-        <div class="qb-nums tabular"><b>${fmtMXN(r.valor,true)}</b><br><span class="foot">valor de inventario</span></div>
-      </div>`;
-    return `
-    <div class="card" style="margin-bottom:24px;">
-      <div class="card-head"><h3>$ de inventario restante</h3><span class="hint">Valor de venta de las unidades disponibles, por torre y por etapa</span></div>
-      <div class="qb-breakdown">
-        ${fila("Torre 1", t1)}
-        ${fila("Torre 2", t2)}
-        ${fila("Etapa 1 (Torre 1 + Torre 2)", etapa1, true)}
-        ${fila("Torre 3", t3)}
-        ${fila("Total proyecto", total, true)}
-      </div>
-    </div>`;
-  })()}
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>$ de inventario restante</h3><span class="hint">Valor de venta de las unidades disponibles, dentro del alcance seleccionado</span></div>
+    <div class="qb-breakdown">
+      ${restantes.map(r=>fila(r.label, r)).join("")}
+      ${restantes.length>1 ? fila("Total "+scopeData().label, restanteTotal, true) : ""}
+    </div>
+  </div>
 
   <div class="card">
     <div class="card-head"><h3>Detalle por unidad</h3><span class="hint" id="invHint"></span></div>
