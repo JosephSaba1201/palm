@@ -2982,10 +2982,10 @@ function pageVentas(){
   <p class="section-sub">Comisiones de venta e inventario disponible.</p>
   <div class="filter-row" style="margin-bottom:20px;">
     <button class="galcat-opt ${ventasTab==="resumen"?"active":""}" data-ventastab="resumen">Resumen</button>
-    <button class="galcat-opt ${ventasTab==="comisiones"?"active":""}" data-ventastab="comisiones">Comisiones por departamento</button>
     <button class="galcat-opt ${ventasTab==="inventario"?"active":""}" data-ventastab="inventario">Inventario</button>
     <button class="galcat-opt ${ventasTab==="cobranza"?"active":""}" data-ventastab="cobranza">Cobranza</button>
     <button class="galcat-opt ${ventasTab==="corte1"?"active":""}" data-ventastab="corte1">Corte Torre 1</button>
+    <button class="galcat-opt ${ventasTab==="comisiones"?"active":""}" data-ventastab="comisiones">Comisiones por departamento</button>
   </div>
   ${ventasTab==="comisiones" ? pageVentasComisiones() : ventasTab==="inventario" ? pageVentasInventario() : ventasTab==="cobranza" ? pageVentasCobranza() : ventasTab==="corte1" ? pageCorteT1() : pageVentasResumen()}
   `;
