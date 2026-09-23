@@ -893,6 +893,11 @@ function pageResumen(){
       <span class="value" style="font-size:26px;">${fmtMXN(fin.pagado,true)}</span>
       <span class="foot">Pendiente: ${fmtMXN(fin.pendiente,true)} &nbsp;·&nbsp; Corte pagos: ${PAGOS_CORTE}</span>
     </div>
+    <div class="card kpi-card">
+      <span class="label">Saldo por cobrar + inventario (Etapa 1)</span>
+      <span class="value" style="font-size:26px;">${fmtMXN(saldoPorCobrarConInventarioEtapa1,true)}</span>
+      <span class="foot">Saldo a escritura ${fmtMXN(saldoEtapa1,true)} + inventario disponible por vender ${fmtMXN(inventarioDisponibleEtapa1,true)}</span>
+    </div>
   </div>
 
   <div class="grid grid-12" style="margin-bottom:24px;">
