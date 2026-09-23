@@ -29,6 +29,14 @@
 @keyframes loadspin{to{transform:rotate(360deg);}}
 #loadingMsg{color:var(--ink-600);font-size:14px;}
 #loadingMsg.error{color:#B4453A;max-width:340px;text-align:center;line-height:1.5;}
+.acceso-form{display:none;flex-direction:column;align-items:center;gap:10px;width:100%;max-width:300px;padding:0 16px;box-sizing:content-box;}
+.loading-overlay.pide-codigo .loading-spinner{display:none;}
+.loading-overlay.pide-codigo .acceso-form{display:flex;}
+.acceso-form input{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface-raised);color:var(--ink-900);font-size:16px;text-align:center;letter-spacing:.12em;text-transform:uppercase;}
+.acceso-form input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.acceso-form button{width:100%;padding:10px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;font-size:14px;cursor:pointer;}
+.acceso-form button:disabled{opacity:.6;cursor:default;}
+.salir-btn{margin-top:6px;padding:0;border:0;background:none;color:var(--ink-400);font-size:12px;text-decoration:underline;cursor:pointer;align-self:flex-start;}
 .loading-retry{margin-top:4px;padding:8px 18px;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-weight:600;font-size:13px;cursor:pointer;}
 :root{
   --page:#F6F4EE;
@@ -512,6 +520,10 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
   <img src="assets/logo-palm.png" alt="PALM" class="loading-logo">
   <div class="loading-spinner"></div>
   <p id="loadingMsg">Cargando datos...</p>
+  <form class="acceso-form" id="accesoForm" autocomplete="off">
+    <input id="accesoInput" type="text" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="Código de acceso" aria-label="Código de acceso" required>
+    <button type="submit" id="accesoBtn">Entrar</button>
+  </form>
 </div>
 
 <div class="sidebar-scrim" id="scrim"></div>
@@ -534,6 +546,7 @@ details[open] > summary .chev{transform:rotate(90deg);color:var(--accent-ink);}
     <div class="sidebar-footer">
       <span class="role-badge"><span class="dot"></span>Vista de Socio</span>
       <span class="update-line">Última actualización: <span id="updLineSide"></span></span>
+      <button class="salir-btn" id="salirBtn" type="button">Salir</button>
     </div>
   </aside>
 
@@ -3545,9 +3558,82 @@ function showLoadingError(msg){
   overlay.appendChild(btn);
 }
 
-async function bootstrapData(){
+/* ---------- Código de acceso ----------
+   Los datos solo se entregan si la petición trae un código activo en el header
+   x-codigo-acceso (lo valida Supabase con RLS; ver supabase/codigos_acceso.sql).
+   Los códigos viven en privado.codigos_acceso y se dan de alta/baja desde Supabase. */
+const CODIGO_STORAGE_KEY = "palm_codigo_acceso";
+function leerCodigoGuardado(){ try{ return localStorage.getItem(CODIGO_STORAGE_KEY) || ""; }catch(e){ return ""; } }
+function guardarCodigo(c){ try{ localStorage.setItem(CODIGO_STORAGE_KEY, c); }catch(e){} }
+function borrarCodigo(){ try{ localStorage.removeItem(CODIGO_STORAGE_KEY); }catch(e){} }
+function normalizarCodigo(c){ return String(c||"").trim().toUpperCase(); }
+
+// Regresa el nombre asociado al código, null si no es válido; lanza error si no hay conexión.
+async function validarCodigo(codigo){
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const {data, error} = await sb.rpc("entrar_con_codigo", {p_codigo: codigo});
+  if(error) throw new Error(error.message);
+  return data || null;
+}
+
+function pedirCodigo(msg, esError){
+  const overlay = document.getElementById("loadingOverlay");
+  const el = document.getElementById("loadingMsg");
+  overlay.classList.remove("hidden");
+  overlay.classList.add("pide-codigo");
+  el.textContent = msg || "Ingresa tu código de acceso";
+  el.classList.toggle("error", !!esError);
+  const btn = document.getElementById("accesoBtn");
+  btn.disabled = false; btn.textContent = "Entrar";
+  const input = document.getElementById("accesoInput");
+  input.value = "";
+  input.focus();
+}
+
+document.getElementById("accesoForm").addEventListener("submit", async ev=>{
+  ev.preventDefault();
+  const codigo = normalizarCodigo(document.getElementById("accesoInput").value);
+  if(!codigo) return;
+  const btn = document.getElementById("accesoBtn");
+  btn.disabled = true; btn.textContent = "Verificando...";
   try{
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    if(!(await validarCodigo(codigo))){ pedirCodigo("Código incorrecto o desactivado.", true); return; }
+  }catch(err){
+    console.error("Error validando código:", err);
+    pedirCodigo("No se pudo conectar. Revisa tu internet e intenta de nuevo.", true);
+    return;
+  }
+  guardarCodigo(codigo);
+  document.getElementById("loadingOverlay").classList.remove("pide-codigo");
+  document.getElementById("loadingMsg").classList.remove("error");
+  document.getElementById("loadingMsg").textContent = "Cargando datos...";
+  bootstrapData(codigo);
+});
+
+document.getElementById("salirBtn").addEventListener("click", ()=>{
+  borrarCodigo();
+  location.reload();
+});
+
+async function iniciar(){
+  const codigo = normalizarCodigo(leerCodigoGuardado());
+  if(!codigo){ pedirCodigo(); return; }
+  let valido;
+  try{ valido = await validarCodigo(codigo); }
+  catch(err){
+    console.error("Error validando código:", err);
+    showLoadingError("No se pudo conectar con la base de datos. Revisa tu conexión a internet e intenta de nuevo.");
+    return;
+  }
+  if(!valido){ borrarCodigo(); pedirCodigo("Tu código ya no es válido. Pide uno nuevo.", true); return; }
+  bootstrapData(codigo);
+}
+
+async function bootstrapData(codigo){
+  try{
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { "x-codigo-acceso": codigo } },
+    });
     const [
       proyectoRows, torresRows, partidasRows, alcancesRows,
       hitosRows, riesgosRows, actividadRows, semanasRows,
@@ -3595,7 +3681,7 @@ async function bootstrapData(){
     showLoadingError("No se pudo conectar con la base de datos. Revisa tu conexión a internet e intenta de nuevo.");
   }
 }
-bootstrapData();
+iniciar();
 </script>
 </body>
 </html>
