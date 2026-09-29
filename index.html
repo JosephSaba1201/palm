@@ -655,7 +655,7 @@ const GALERIA_RAW = [
   {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa."},
   {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
   {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
-  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades."},
+  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada_frontal"},
   {file:"27_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, avance de fachadas y amenidades."},
   {file:"28_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, ángulo complementario."},
   {file:"29_2026-03-25.jpeg", iso:"2026-03-25", categoria:"General", cap:"Vista general del avance de fachadas."},
@@ -670,13 +670,40 @@ const GALERIA_RAW = [
   {file:"38_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Cimentación de Torre 3: armado de columnas y zapatas."},
   {file:"39_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea amplia: Torre 3 en estructura junto a amenidades y alberca terminadas."},
   {file:"40_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Detalle de estructura de concreto de Torre 3, junto a torre vecina terminada."},
-  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Pendiente de descripción."},
+  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista general, fachada trasera, Torres 1 y 2.", toma:"fachada_trasera"},
 
 ];
 const GALERIA = GALERIA_RAW
   .slice()
   .sort((a,b)=> a.iso===b.iso ? 0 : (a.iso<b.iso?1:-1))
   .map(g=>({...g, torre:"global", fecha:fmtFecha(g.iso)}));
+
+// Comparador Antes/Después por toma fija (misma composición de cámara, ej. fachada
+// frontal/trasera) -- distinto del Antes/Ahora general de la Galería, que solo toma
+// la foto más antigua y más reciente de todo el acervo sin importar el ángulo.
+const TOMAS_FACHADA = [
+  {id:"fachada_frontal", label:"Fachada frontal"},
+  {id:"fachada_trasera", label:"Fachada trasera"},
+];
+function comparadorTomas(){
+  return TOMAS_FACHADA.map(t=>{
+    const fotos = GALERIA.filter(g=>g.toma===t.id).slice().sort((a,b)=>a.iso<b.iso?-1:1);
+    if(fotos.length<2) return null;
+    return {...t, antes:fotos[0], despues:fotos[fotos.length-1]};
+  }).filter(Boolean);
+}
+function renderComparadorFachadas(){
+  const pares = comparadorTomas();
+  if(!pares.length) return "";
+  return pares.map(p=>`
+    <div class="card" style="margin-bottom:24px;">
+      <div class="card-head"><h3>${p.label} — Antes / Después</h3><span class="hint">${p.antes.fecha} → ${p.despues.fecha}</span></div>
+      <div class="compare-wrap">
+        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.antes.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${p.antes.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.antes.file)}" loading="lazy" alt=""></div></a>
+        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.despues.file)}" target="_blank" rel="noopener"><span class="compare-label">Después · ${p.despues.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.despues.file)}" loading="lazy" alt=""></div></a>
+      </div>
+    </div>`).join("");
+}
 
 /* ============================================================ HELPERS ============================================================ */
 function fmtMXN(n, compact){
@@ -960,7 +987,7 @@ function pageResumen(){
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="margin-bottom:24px;">
     <div class="card-head"><h3>Corte de Obra por Torre — Presupuesto vs. Control de Pagos</h3><span class="hint">Corte pagos: ${PAGOS_CORTE}</span></div>
     <div class="chart-box">${svgPresupuestoVsReal(chartObra, 900, "Contratado", "Pagado")}</div>
     <div class="qb-breakdown" style="margin-top:2px;">
@@ -975,6 +1002,8 @@ function pageResumen(){
       </div>
     </div>
   </div>
+
+  ${renderComparadorFachadas()}
   `;
 }
 
@@ -3048,7 +3077,7 @@ function pageCronograma(){
 }
 
 /* ============================================================ PAGE: GALERIA ============================================================ */
-const GALERIA_CATS = ["Todas","General","Amenidades","Personal","Estructura"];
+const GALERIA_CATS = ["Todas","General","Amenidades","Estructura"];
 let galeriaCat = "Todas";
 function pageGaleria(){
   const all = GALERIA.filter(g=>enScope(g.torre));
@@ -3100,6 +3129,8 @@ function pageGaleria(){
     <div class="card-head"><h3>Videos de avance</h3><span class="hint">${VIDEOS.length} videos</span></div>
     <div class="gallery-grid">${VIDEOS.map(videoTile).join("")}</div>
   </div>` : ""}
+
+  ${renderComparadorFachadas()}
 
   ${oldest && newest ? `
   <div class="card" style="margin-bottom:24px;">
