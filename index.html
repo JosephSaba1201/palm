@@ -336,6 +336,9 @@ td.name{text-align:left;font-weight:600;}
 .photo-tile:hover{box-shadow:var(--shadow-md);transform:translateY(-1px);}
 .photo-tile .art{height:150px;position:relative;background:var(--page);}
 .photo-tile .art img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-tile .art video{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-tile .art .play-badge{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+.photo-tile .art .play-badge svg{width:40px;height:40px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5));}
 .photo-tile .art .badge{position:absolute;top:8px;left:8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;color:#fff;background:rgba(23,21,18,0.55);border-radius:5px;padding:3px 7px;}
 .photo-tile .meta{padding:12px 14px;}
 .photo-tile .zona{font-size:12.5px;font-weight:600;}
@@ -605,18 +608,17 @@ function fmtFecha(iso){
 }
 // file: nombre en fotos/ (y fotos/thumbs/ para la miniatura) · iso: fecha real (EXIF / nombre de archivo)
 const FOTOS_BASE = "https://chnboztriyvrlqisvdpv.supabase.co/storage/v1/object/public/fotos";
+const VIDEOS_BASE = "https://chnboztriyvrlqisvdpv.supabase.co/storage/v1/object/public/videos";
+const VIDEOS_RAW = [
+  {file:"01_2026-09-16.mp4", iso:"2026-09-16", cap:"Pendiente de descripción."},
+  {file:"02_2026-09-16.mp4", iso:"2026-09-16", cap:"Pendiente de descripción."},
+];
+const VIDEOS = VIDEOS_RAW.slice().sort((a,b)=> a.iso===b.iso ? 0 : (a.iso<b.iso?1:-1)).map(v=>({...v, fecha:fmtFecha(v.iso)}));
 const GALERIA_RAW = [
   {file:"01_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna de Torres 1 y 2 en etapa de estructura, con luna llena."},
   {file:"02_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna, acercamiento a estructura metálica."},
   {file:"03_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna con grúas torre en operación."},
   {file:"04_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna, salida de luna sobre el sitio."},
-  {file:"05_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Llegada de personal para reunión matutina de seguridad."},
-  {file:"06_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Formación de cuadrillas previo al inicio de jornada."},
-  {file:"07_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Formación de cuadrillas previo al inicio de jornada."},
-  {file:"08_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Reunión matutina de personal frente a Torres 1 y 2."},
-  {file:"09_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Reunión matutina de personal, vista aérea."},
-  {file:"10_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Reunión matutina de personal, vista aérea."},
-  {file:"11_2025-11-06.JPG", iso:"2025-11-06", categoria:"Personal", cap:"Cuadrillas dirigiéndose a sus frentes de trabajo."},
   {file:"12_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Cuadrillas junto a la alberca y clubhouse en construcción."},
   {file:"13_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Personal en zona de amenidades, alberca en obra gris."},
   {file:"14_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista aérea general de Torres 1 y 2 y zona de amenidades."},
@@ -2736,6 +2738,17 @@ function pageGaleria(){
         <div class="cap">${g.cap}</div>
       </div>
     </a>`;
+  const videoTile = v => `
+    <a class="photo-tile" href="${VIDEOS_BASE}/${encodeURIComponent(v.file)}" target="_blank" rel="noopener">
+      <div class="art">
+        <video src="${VIDEOS_BASE}/${encodeURIComponent(v.file)}#t=0.5" preload="metadata" muted playsinline></video>
+        <span class="play-badge"><svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="11" fill="rgba(23,21,18,0.55)"/><path d="M10 8l6 4-6 4V8z"/></svg></span>
+      </div>
+      <div class="meta">
+        <div class="zona">${v.fecha}</div>
+        <div class="cap">${v.cap}</div>
+      </div>
+    </a>`;
   const oldest = all[all.length-1], newest = all[0];
   const evolucion = all.slice();
   const timelineItem = g => `
@@ -2758,6 +2771,12 @@ function pageGaleria(){
     <div class="card-head"><h3>Última actualización de obra</h3><span class="hint">${items.length} fotografías</span></div>
     <div class="gallery-grid">${items.slice(0,6).map(tile).join("")}</div>
   </div>
+
+  ${VIDEOS.length ? `
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Videos de avance</h3><span class="hint">${VIDEOS.length} videos</span></div>
+    <div class="gallery-grid">${VIDEOS.map(videoTile).join("")}</div>
+  </div>` : ""}
 
   ${oldest && newest ? `
   <div class="card" style="margin-bottom:24px;">
