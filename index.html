@@ -655,7 +655,7 @@ const GALERIA_RAW = [
   {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa."},
   {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
   {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
-  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada_frontal"},
+  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada"},
   {file:"27_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, avance de fachadas y amenidades."},
   {file:"28_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, ángulo complementario."},
   {file:"29_2026-03-25.jpeg", iso:"2026-03-25", categoria:"General", cap:"Vista general del avance de fachadas."},
@@ -670,7 +670,7 @@ const GALERIA_RAW = [
   {file:"38_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Cimentación de Torre 3: armado de columnas y zapatas."},
   {file:"39_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea amplia: Torre 3 en estructura junto a amenidades y alberca terminadas."},
   {file:"40_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Detalle de estructura de concreto de Torre 3, junto a torre vecina terminada."},
-  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista general, fachada trasera, Torres 1 y 2.", toma:"fachada_trasera"},
+  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista general, fachada trasera, Torres 1 y 2.", toma:"fachada"},
 
 ];
 const GALERIA = GALERIA_RAW
@@ -678,12 +678,11 @@ const GALERIA = GALERIA_RAW
   .sort((a,b)=> a.iso===b.iso ? 0 : (a.iso<b.iso?1:-1))
   .map(g=>({...g, torre:"global", fecha:fmtFecha(g.iso)}));
 
-// Comparador Antes/Después por toma fija (misma composición de cámara, ej. fachada
-// frontal/trasera) -- distinto del Antes/Ahora general de la Galería, que solo toma
-// la foto más antigua y más reciente de todo el acervo sin importar el ángulo.
+// Comparador Antes/Después por toma fija (grupo de fotos elegidas a mano para mostrar
+// avance) -- distinto del Antes/Ahora general de la Galería, que solo toma la foto más
+// antigua y más reciente de todo el acervo sin importar cuál sea.
 const TOMAS_FACHADA = [
-  {id:"fachada_frontal", label:"Fachada frontal"},
-  {id:"fachada_trasera", label:"Fachada trasera"},
+  {id:"fachada", label:"Fachadas"},
 ];
 function comparadorTomas(){
   return TOMAS_FACHADA.map(t=>{
