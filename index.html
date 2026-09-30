@@ -3649,10 +3649,31 @@ function showLoadingError(msg){
    Los datos solo se entregan si la petición trae un código activo en el header
    x-codigo-acceso (lo valida Supabase con RLS; ver supabase/codigos_acceso.sql).
    Los códigos viven en privado.codigos_acceso y se dan de alta/baja desde Supabase. */
-const CODIGO_STORAGE_KEY = "palm_codigo_acceso";
-function leerCodigoGuardado(){ try{ return localStorage.getItem(CODIGO_STORAGE_KEY) || ""; }catch(e){ return ""; } }
-function guardarCodigo(c){ try{ localStorage.setItem(CODIGO_STORAGE_KEY, c); }catch(e){} }
-function borrarCodigo(){ try{ localStorage.removeItem(CODIGO_STORAGE_KEY); }catch(e){} }
+const CODIGO_STORAGE_KEY = "palm_sesion";
+// La sesión dura esto desde que se escribió el código; después hay que volver a escribirlo.
+const SESION_HORAS = 12;
+const SESION_MS = SESION_HORAS * 60 * 60 * 1000;
+// Regresa el código solo si la sesión sigue vigente ("" si no hay sesión o ya expiró).
+function leerCodigoGuardado(){
+  try{
+    const s = JSON.parse(localStorage.getItem(CODIGO_STORAGE_KEY) || "null");
+    if(!s || !s.c || !(Date.now() - s.t < SESION_MS)) return "";
+    return s.c;
+  }catch(e){ return ""; }
+}
+function haySesionGuardada(){ try{ return !!localStorage.getItem(CODIGO_STORAGE_KEY); }catch(e){ return false; } }
+function guardarCodigo(c){ try{ localStorage.setItem(CODIGO_STORAGE_KEY, JSON.stringify({c, t: Date.now()})); }catch(e){} }
+function borrarCodigo(){ try{ localStorage.removeItem(CODIGO_STORAGE_KEY); localStorage.removeItem("palm_codigo_acceso"); }catch(e){} }
+
+// Con la página abierta, revisa cada minuto (y al regresar a la pestaña) si la sesión ya venció.
+function vigilarSesion(){
+  const revisar = ()=>{
+    if(leerCodigoGuardado()) return;
+    location.reload(); // al recargar, iniciar() ve la sesión vencida y pide el código otra vez
+  };
+  setInterval(revisar, 60 * 1000);
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) revisar(); });
+}
 function normalizarCodigo(c){ return String(c||"").trim().toUpperCase(); }
 
 // Regresa el nombre asociado al código, null si no es válido; lanza error si no hay conexión.
@@ -3691,6 +3712,7 @@ document.getElementById("accesoForm").addEventListener("submit", async ev=>{
     return;
   }
   guardarCodigo(codigo);
+  vigilarSesion();
   document.getElementById("loadingOverlay").classList.remove("pide-codigo");
   document.getElementById("loadingMsg").classList.remove("error");
   document.getElementById("loadingMsg").textContent = "Cargando datos...";
@@ -3704,7 +3726,12 @@ document.getElementById("salirBtn").addEventListener("click", ()=>{
 
 async function iniciar(){
   const codigo = normalizarCodigo(leerCodigoGuardado());
-  if(!codigo){ pedirCodigo(); return; }
+  if(!codigo){
+    const expiro = haySesionGuardada();
+    borrarCodigo();
+    pedirCodigo(expiro ? "Tu sesión expiró. Vuelve a ingresar tu código." : "");
+    return;
+  }
   let valido;
   try{ valido = await validarCodigo(codigo); }
   catch(err){
@@ -3713,6 +3740,7 @@ async function iniciar(){
     return;
   }
   if(!valido){ borrarCodigo(); pedirCodigo("Tu código ya no es válido. Pide uno nuevo.", true); return; }
+  vigilarSesion();
   bootstrapData(codigo);
 }
 
