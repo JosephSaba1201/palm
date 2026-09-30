@@ -652,10 +652,10 @@ const GALERIA_RAW = [
   {file:"20_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Vista cenital de la zona de amenidades."},
   {file:"21_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Vista cenital de la zona de amenidades."},
   {file:"22_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Detalle de estructura y albañilería, Torre 2."},
-  {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa."},
+  {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa.", angulo:"posterior"},
   {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
   {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
-  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada", angulo:"frontal"},
+  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", angulo:"frontal"},
   {file:"27_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, avance de fachadas y amenidades.", angulo:"frontal"},
   {file:"28_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, ángulo complementario."},
   {file:"29_2026-03-25.jpeg", iso:"2026-03-25", categoria:"General", cap:"Vista general del avance de fachadas.", angulo:"frontal"},
@@ -670,7 +670,7 @@ const GALERIA_RAW = [
   {file:"38_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Cimentación de Torre 3: armado de columnas y zapatas."},
   {file:"39_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea amplia: Torre 3 en estructura junto a amenidades y alberca terminadas."},
   {file:"40_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Detalle de estructura de concreto de Torre 3, junto a torre vecina terminada."},
-  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista general, fachada trasera, Torres 1 y 2.", toma:"fachada"},
+  {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista general, fachada trasera, Torres 1 y 2.", angulo:"posterior"},
 
 ];
 const GALERIA = GALERIA_RAW
@@ -678,21 +678,25 @@ const GALERIA = GALERIA_RAW
   .sort((a,b)=> a.iso===b.iso ? 0 : (a.iso<b.iso?1:-1))
   .map(g=>({...g, torre:"global", fecha:fmtFecha(g.iso)}));
 
-// Comparador Antes/Después por toma fija (grupo de fotos elegidas a mano para mostrar
-// avance) -- distinto del Antes/Ahora general de la Galería, que solo toma la foto más
-// antigua y más reciente de todo el acervo sin importar cuál sea.
-const TOMAS_FACHADA = [
-  {id:"fachada", label:"Fachadas"},
+// Fotos marcadas con angulo:"frontal"/"posterior" en GALERIA_RAW -- por cada ángulo
+// con 2+ fotos se arma un Antes/Después (la más antigua vs. la más reciente) y una
+// línea de tiempo cronológica completa. Todo se recalcula solo según lo etiquetado.
+const ANGULOS_FACHADA = [
+  {id:"frontal", label:"Fachada frontal"},
+  {id:"posterior", label:"Fachada posterior"},
 ];
-function comparadorTomas(){
-  return TOMAS_FACHADA.map(t=>{
-    const fotos = GALERIA.filter(g=>g.toma===t.id).slice().sort((a,b)=>a.iso<b.iso?-1:1);
+function fotosPorAngulo(id){
+  return GALERIA.filter(g=>g.angulo===id).slice().sort((a,b)=>a.iso<b.iso?-1:1);
+}
+function comparadorFachadas(){
+  return ANGULOS_FACHADA.map(a=>{
+    const fotos = fotosPorAngulo(a.id);
     if(fotos.length<2) return null;
-    return {...t, antes:fotos[0], despues:fotos[fotos.length-1]};
+    return {...a, antes:fotos[0], despues:fotos[fotos.length-1]};
   }).filter(Boolean);
 }
 function renderComparadorFachadas(){
-  const pares = comparadorTomas();
+  const pares = comparadorFachadas();
   if(!pares.length) return "";
   return pares.map(p=>`
     <div class="card" style="margin-bottom:24px;">
@@ -703,23 +707,22 @@ function renderComparadorFachadas(){
       </div>
     </div>`).join("");
 }
-// Línea de tiempo de la fachada frontal: fotos marcadas con angulo:"frontal" en
-// GALERIA_RAW, en orden cronológico. Reutiliza el mismo patrón visual que la línea
-// de tiempo general de la Galería, pero solo con esa toma específica.
-function renderFachadaFrontalTimeline(){
-  const fotos = GALERIA.filter(g=>g.angulo==="frontal").slice().sort((a,b)=>a.iso<b.iso?-1:1);
-  if(fotos.length<2) return "";
+function renderTimelinesFachada(){
   const item = g => `
     <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
       <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
       <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
       <div class="timeline-date">${g.fecha}</div>
     </a>`;
-  return `
+  return ANGULOS_FACHADA.map(a=>{
+    const fotos = fotosPorAngulo(a.id);
+    if(fotos.length<2) return "";
+    return `
   <div class="card" style="margin-bottom:24px;">
-    <div class="card-head"><h3>Línea de tiempo · Fachada frontal</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
+    <div class="card-head"><h3>Línea de tiempo · ${a.label}</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
     <div class="timeline-strip">${fotos.map(item).join("")}</div>
   </div>`;
+  }).join("");
 }
 
 /* ============================================================ HELPERS ============================================================ */
@@ -934,7 +937,7 @@ function pageResumen(){
   <p class="section-sub">${s.torreLabel}. Datos reales: Presupuesto vs. Control de Pagos, y cobranza de Ventas.</p>
 
   ${renderComparadorFachadas()}
-  ${renderFachadaFrontalTimeline()}
+  ${renderTimelinesFachada()}
 
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
@@ -3149,7 +3152,7 @@ function pageGaleria(){
   </div>` : ""}
 
   ${renderComparadorFachadas()}
-  ${renderFachadaFrontalTimeline()}
+  ${renderTimelinesFachada()}
 
   ${oldest && newest ? `
   <div class="card" style="margin-bottom:24px;">
