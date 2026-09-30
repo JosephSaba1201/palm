@@ -655,7 +655,7 @@ const GALERIA_RAW = [
   {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa."},
   {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
   {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
-  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada"},
+  {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", toma:"fachada", angulo:"frontal"},
   {file:"27_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, avance de fachadas y amenidades."},
   {file:"28_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, ángulo complementario."},
   {file:"29_2026-03-25.jpeg", iso:"2026-03-25", categoria:"General", cap:"Vista general del avance de fachadas."},
@@ -702,6 +702,24 @@ function renderComparadorFachadas(){
         <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.despues.file)}" target="_blank" rel="noopener"><span class="compare-label">Después · ${p.despues.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.despues.file)}" loading="lazy" alt=""></div></a>
       </div>
     </div>`).join("");
+}
+// Línea de tiempo de la fachada frontal: fotos marcadas con angulo:"frontal" en
+// GALERIA_RAW, en orden cronológico. Reutiliza el mismo patrón visual que la línea
+// de tiempo general de la Galería, pero solo con esa toma específica.
+function renderFachadaFrontalTimeline(){
+  const fotos = GALERIA.filter(g=>g.angulo==="frontal").slice().sort((a,b)=>a.iso<b.iso?-1:1);
+  if(fotos.length<2) return "";
+  const item = g => `
+    <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
+      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
+      <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
+      <div class="timeline-date">${g.fecha}</div>
+    </a>`;
+  return `
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Línea de tiempo · Fachada frontal</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
+    <div class="timeline-strip">${fotos.map(item).join("")}</div>
+  </div>`;
 }
 
 /* ============================================================ HELPERS ============================================================ */
@@ -915,6 +933,9 @@ function pageResumen(){
   <h2 class="section-title" style="margin-top:0;">Panorama general</h2>
   <p class="section-sub">${s.torreLabel}. Datos reales: Presupuesto vs. Control de Pagos, y cobranza de Ventas.</p>
 
+  ${renderComparadorFachadas()}
+  ${renderFachadaFrontalTimeline()}
+
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
       <span class="label">Avance de pago (real)</span>
@@ -1001,8 +1022,6 @@ function pageResumen(){
       </div>
     </div>
   </div>
-
-  ${renderComparadorFachadas()}
   `;
 }
 
@@ -3130,6 +3149,7 @@ function pageGaleria(){
   </div>` : ""}
 
   ${renderComparadorFachadas()}
+  ${renderFachadaFrontalTimeline()}
 
   ${oldest && newest ? `
   <div class="card" style="margin-bottom:24px;">
