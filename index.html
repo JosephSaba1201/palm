@@ -915,6 +915,8 @@ function pageResumen(){
   <h2 class="section-title" style="margin-top:0;">Panorama general</h2>
   <p class="section-sub">${s.torreLabel}. Datos reales: Presupuesto vs. Control de Pagos, y cobranza de Ventas.</p>
 
+  ${renderComparadorFachadas()}
+
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
       <span class="label">Avance de pago (real)</span>
@@ -1001,8 +1003,6 @@ function pageResumen(){
       </div>
     </div>
   </div>
-
-  ${renderComparadorFachadas()}
   `;
 }
 
