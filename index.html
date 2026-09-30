@@ -348,6 +348,8 @@ td.name{text-align:left;font-weight:600;}
 .photo-tile .art .play-badge{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
 .photo-tile .art .play-badge svg{width:40px;height:40px;filter:drop-shadow(0 1px 4px rgba(0,0,0,.5));}
 .photo-tile .art .badge{position:absolute;top:8px;left:8px;font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;color:#fff;background:rgba(23,21,18,0.55);border-radius:5px;padding:3px 7px;}
+.photo-tile .art .numtag,.timeline-thumb .numtag{position:absolute;top:8px;right:8px;font-size:10px;font-weight:600;color:rgba(255,255,255,0.55);background:rgba(23,21,18,0.28);border-radius:5px;padding:2px 6px;font-variant-numeric:tabular-nums;}
+.timeline-thumb{position:relative;}
 .photo-tile .meta{padding:12px 14px;}
 .photo-tile .zona{font-size:12.5px;font-weight:600;}
 .photo-tile .fecha{font-size:11px;color:var(--ink-400);margin-top:2px;}
@@ -628,6 +630,13 @@ function fmtFecha(iso){
   const [y,m,d] = iso.split("-").map(Number);
   return `${d} ${MESES[m-1]} ${y}`;
 }
+// Número de foto (del prefijo del nombre de archivo, ej. "23" de "23_2025-11-06.JPG"),
+// mostrado como etiqueta tenue sobre la miniatura para poder identificar cada toma
+// rápido por número en vez de por fecha/descripción.
+function numTag(g){
+  const m = /^(\d+)_/.exec(g.file);
+  return m ? `<span class="numtag">#${m[1]}</span>` : "";
+}
 // file: nombre en fotos/ (y fotos/thumbs/ para la miniatura) · iso: fecha real (EXIF / nombre de archivo)
 const FOTOS_BASE = "https://chnboztriyvrlqisvdpv.supabase.co/storage/v1/object/public/fotos";
 const VIDEOS_BASE = "https://chnboztriyvrlqisvdpv.supabase.co/storage/v1/object/public/videos";
@@ -703,15 +712,15 @@ function renderComparadorFachadas(){
     <div class="card" style="margin-bottom:24px;">
       <div class="card-head"><h3>${p.label} — Antes / Después</h3><span class="hint">${p.antes.fecha} → ${p.despues.fecha}</span></div>
       <div class="compare-wrap">
-        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.antes.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${p.antes.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.antes.file)}" loading="lazy" alt=""></div></a>
-        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.despues.file)}" target="_blank" rel="noopener"><span class="compare-label">Después · ${p.despues.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.despues.file)}" loading="lazy" alt=""></div></a>
+        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.antes.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${p.antes.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.antes.file)}" loading="lazy" alt="">${numTag(p.antes)}</div></a>
+        <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(p.despues.file)}" target="_blank" rel="noopener"><span class="compare-label">Después · ${p.despues.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(p.despues.file)}" loading="lazy" alt="">${numTag(p.despues)}</div></a>
       </div>
     </div>`).join("");
 }
 function renderTimelinesFachada(){
   const item = g => `
     <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
-      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
+      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
       <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
       <div class="timeline-date">${g.fecha}</div>
     </a>`;
@@ -3106,7 +3115,7 @@ function pageGaleria(){
   const items = galeriaCat==="Todas" ? all : all.filter(g=>g.categoria===galeriaCat);
   const tile = g => `
     <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener">
-      <div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"><span class="badge">${g.categoria}</span></div>
+      <div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"><span class="badge">${g.categoria}</span>${numTag(g)}</div>
       <div class="meta">
         <div class="zona">${g.fecha}</div>
         <div class="cap">${g.cap}</div>
@@ -3127,7 +3136,7 @@ function pageGaleria(){
   const evolucion = all.slice();
   const timelineItem = g => `
     <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
-      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}"></div>
+      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
       <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
       <div class="timeline-date">${g.fecha}</div>
     </a>`;
@@ -3159,8 +3168,8 @@ function pageGaleria(){
   <div class="card" style="margin-bottom:24px;">
     <div class="card-head"><h3>Antes / Ahora</h3><span class="hint">Vista general del sitio</span></div>
     <div class="compare-wrap">
-      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(oldest.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${oldest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(oldest.file)}" loading="lazy" alt=""></div></a>
-      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(newest.file)}" target="_blank" rel="noopener"><span class="compare-label">Ahora · ${newest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(newest.file)}" loading="lazy" alt=""></div></a>
+      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(oldest.file)}" target="_blank" rel="noopener"><span class="compare-label">Antes · ${oldest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(oldest.file)}" loading="lazy" alt="">${numTag(oldest)}</div></a>
+      <a class="photo-tile" href="${FOTOS_BASE}/${encodeURIComponent(newest.file)}" target="_blank" rel="noopener"><span class="compare-label">Ahora · ${newest.fecha}</span><div class="art"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(newest.file)}" loading="lazy" alt="">${numTag(newest)}</div></a>
     </div>
   </div>` : ""}
 
