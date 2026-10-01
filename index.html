@@ -661,18 +661,17 @@ const GALERIA_RAW = [
   {file:"04_2025-11-05.JPG", iso:"2025-11-05", categoria:"General", cap:"Vista nocturna, salida de luna sobre el sitio."},
   {file:"12_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Cuadrillas junto a la alberca y clubhouse en construcción."},
   {file:"13_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Personal en zona de amenidades, alberca en obra gris."},
-  {file:"14_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista aérea general de Torres 1 y 2 y zona de amenidades."},
   {file:"15_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista aérea general del sitio, primera hora de la mañana."},
   {file:"16_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Clubhouse y alberca principal en etapa de obra gris."},
   {file:"17_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Detalle de albercas y andadores de amenidades."},
   {file:"18_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Detalle de albercas y andadores de amenidades."},
   {file:"19_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Alberca infantil, en proceso de acabados."},
   {file:"20_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Vista cenital de la zona de amenidades."},
-  {file:"21_2025-11-06.JPG", iso:"2025-11-06", categoria:"Amenidades", cap:"Vista cenital de la zona de amenidades."},
+  {file:"21_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Avance de estructura y fachada, Torre 2."},
   {file:"22_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Detalle de estructura y albañilería, Torre 2."},
-  {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2 desde la playa.", angulo:"posterior"},
-  {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
-  {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"General", cap:"Vista general de Torres 1 y 2, frente de playa."},
+  {file:"23_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Avance de estructura, Torres 1 y 2, desde la playa.", angulo:"posterior"},
+  {file:"24_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Avance de estructura, Torres 1 y 2, frente de playa."},
+  {file:"25_2025-11-06.JPG", iso:"2025-11-06", categoria:"Estructura", cap:"Avance de estructura de Torre 1, frente de playa."},
   {file:"26_2025-12-22.jpeg", iso:"2025-12-22", categoria:"General", cap:"Vista general del sitio y zona de amenidades.", angulo:"frontal"},
   {file:"27_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, avance de fachadas y amenidades.", angulo:"frontal"},
   {file:"28_2026-02-26.jpeg", iso:"2026-02-26", categoria:"General", cap:"Vista general, ángulo complementario."},
@@ -680,13 +679,13 @@ const GALERIA_RAW = [
   {file:"30_2026-05-23.jpeg", iso:"2026-05-23", categoria:"General", cap:"Vista general, Torres 1 y 2 desde la costa."},
   {file:"31_2026-06-01.jpeg", iso:"2026-06-01", categoria:"General", cap:"Vista general, avance de fachada y estructura."},
   {file:"32_2026-06-15.jpg", iso:"2026-06-15", categoria:"General", cap:"Vista general desde la playa, oleaje de fondo."},
-  {file:"33_2026-08-14.jpeg", iso:"2026-08-14", categoria:"General", cap:"Vista general más reciente, Torres 1 y 2."},
+  {file:"33_2026-08-14.jpeg", iso:"2026-08-14", categoria:"General", cap:"Vista general más reciente, Torres 1 y 2.", angulo:"posterior"},
   {file:"34_2026-08-14.jpeg", iso:"2026-08-14", categoria:"General", cap:"Vista general más reciente, ángulo complementario."},
   {file:"35_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea de Torres 1 y 2 terminadas junto a Torre 3 en proceso de estructura, frente de playa."},
   {file:"36_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea, Torre 3 en estructura junto a Torres 1 y 2, ángulo complementario."},
   {file:"37_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea general, Torre 3 en estructura, con parque y costa al fondo."},
   {file:"38_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Cimentación de Torre 3: armado de columnas y zapatas."},
-  {file:"39_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Vista aérea amplia: Torre 3 en estructura junto a amenidades y alberca terminadas.", angulo:"frontal"},
+  {file:"39_2026-09-06.jpeg", iso:"2026-09-06", categoria:"General", cap:"Vista aérea amplia, fachada frontal, Torres 1 y 2 junto a amenidades y alberca terminadas.", angulo:"frontal"},
   {file:"40_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Detalle de estructura de concreto de Torre 3, junto a torre vecina terminada."},
   {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista aérea desde la playa, fachada frontal, Torres 1 y 2 y zona de amenidades.", angulo:"frontal"},
   {file:"42_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista aérea, fachada posterior, Torres 1 y 2.", angulo:"posterior"},
@@ -742,25 +741,34 @@ function layoutFachadaTimeline(fotos){
   });
   return {items, width: x + THUMB + 80};
 }
-function renderTimelinesFachada(){
-  return ANGULOS_FACHADA.map(a=>{
-    const fotos = fotosPorAngulo(a.id);
-    if(fotos.length<2) return "";
-    const {items, width} = layoutFachadaTimeline(fotos);
-    const item = g => `
-      <a class="facade-tl-item" style="left:${g.x}px" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
-        <div class="facade-tl-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
-        <span class="facade-tl-dot"></span>
-        <span class="facade-tl-date">${g.fecha}</span>
-      </a>`;
-    return `
+function renderTimelineCard(titulo, fotos){
+  if(fotos.length<2) return "";
+  const {items, width} = layoutFachadaTimeline(fotos);
+  const item = g => `
+    <a class="facade-tl-item" style="left:${g.x}px" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
+      <div class="facade-tl-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
+      <span class="facade-tl-dot"></span>
+      <span class="facade-tl-date">${g.fecha}</span>
+    </a>`;
+  return `
   <div class="card" style="margin-bottom:24px;">
-    <div class="card-head"><h3>Línea de tiempo · ${a.label}</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
+    <div class="card-head"><h3>Línea de tiempo · ${titulo}</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
     <div class="facade-tl-wrap"><div class="facade-tl-track" style="width:${width}px;">
       <div class="facade-tl-axis"></div>
       ${items.map(item).join("")}
     </div></div>
   </div>`;
+}
+function renderTimelinesFachada(){
+  return ANGULOS_FACHADA.map(a=>renderTimelineCard(a.label, fotosPorAngulo(a.id))).join("");
+}
+// Líneas de tiempo por partida (categoria): mismas fotos que alimentan los filtros de
+// la Galería (General/Amenidades/Estructura), agrupadas cronológicamente por categoría.
+const CATEGORIAS_TIMELINE = ["Amenidades","Estructura"];
+function renderTimelinesCategoria(){
+  return CATEGORIAS_TIMELINE.map(cat=>{
+    const fotos = GALERIA.filter(g=>g.categoria===cat).slice().sort((a,b)=>a.iso<b.iso?-1:1);
+    return renderTimelineCard(cat, fotos);
   }).join("");
 }
 
@@ -3192,6 +3200,7 @@ function pageGaleria(){
 
   ${renderComparadorFachadas()}
   ${renderTimelinesFachada()}
+  ${renderTimelinesCategoria()}
 
   ${oldest && newest ? `
   <div class="card" style="margin-bottom:24px;">
