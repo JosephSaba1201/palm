@@ -784,6 +784,11 @@ function esc(s){return String(s);}
 
 let currentScope = "consolidado";
 let currentPage = "resumen";
+// Perfil del código de acceso (privado.codigos_acceso.perfil). "ventas" solo ve Ventas
+// (sin comisiones) y Galería; Supabase además le niega las tablas financieras.
+let PERFIL = "completo";
+const PERFIL_VENTAS_PAGINAS = ["ventas","galeria"];
+const esPerfilVentas = () => PERFIL === "ventas";
 
 function scopeData(){ return SCOPES[currentScope] || SCOPES.consolidado; }
 // Etapa 1 (consolidado) = Torre 1 + Torre 2 + Amenidades/global. Torre 3 es independiente y no entra en Etapa 1.
@@ -2588,6 +2593,7 @@ function pageVentasResumen(){
     </div>
   </div>
 
+  ${esPerfilVentas() ? "" : `
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card hero">
       <span class="label">Comisiones de venta pagadas · todo el proyecto</span>
@@ -2601,7 +2607,7 @@ function pageVentasResumen(){
     <p class="foot" style="margin:-6px 0 12px;">Armado a partir del concepto de las comisiones pagadas — puede no incluir el 100% de las unidades vendidas.</p>
     <input type="text" id="clInput" class="qb-input" placeholder="Buscar cliente, depto o módulo (ej. Cecilia Ajuria, 703A, módulo B)...">
     <div id="clResults" style="margin-top:14px;"></div>
-  </div>
+  </div>`}
   ${pageCorteT1Embed()}
   `;
 }
@@ -2655,7 +2661,7 @@ function invChip(u){
   const precio = u.r && (u.r.startsWith("$") ? u.r : (/^[\d,.\s]+$/.test(u.r) ? "$"+u.r : null));
   const estadoLbl = (INV_STATUS_BADGE[u.s]||[,u.s])[1];
   const extra = u.s==="disponible" ? (precio ? " · "+precio : "") : ((u.cb||u.r) ? " · "+(u.cb||u.r) : "");
-  const tip = `<b>${u.d||label}</b>${u.tp?" "+u.tp:""}${u.m2?" · "+u.m2+"m²":""}<br>${estadoLbl}${extra}${u.cor?" · comisión ya pagada":""}`;
+  const tip = `<b>${u.d||label}</b>${u.tp?" "+u.tp:""}${u.m2?" · "+u.m2+"m²":""}<br>${estadoLbl}${extra}${u.cor && !esPerfilVentas()?" · comisión ya pagada":""}`;
   return `<span class="inv-chip ${cls}" data-tip="${tip.replace(/"/g,'&quot;')}">${label}</span>`;
 }
 function renderInventarioLista(){
@@ -2728,7 +2734,9 @@ function pageVentasInventario(){
       <div class="qb-nums tabular"><b>${fmtMXN(r.valor,true)}</b><br><span class="foot">valor de inventario</span></div>
     </div>`;
   return `
-  <p class="section-sub" style="margin-top:0;">Armado a partir de la lista de precios (corte ${INVENTARIO_CORTE}), corregido contra Comisiones por departamento: ${INVENTARIO_REAL.filter(u=>u.cor).length} unidades que la lista marcaba "Disponible" en realidad ya tienen comisión pagada. Alcance: ${scopeData().label}.</p>
+  <p class="section-sub" style="margin-top:0;">${esPerfilVentas()
+    ? `Armado a partir de la lista de precios (corte ${INVENTARIO_CORTE}). Alcance: ${scopeData().label}.`
+    : `Armado a partir de la lista de precios (corte ${INVENTARIO_CORTE}), corregido contra Comisiones por departamento: ${INVENTARIO_REAL.filter(u=>u.cor).length} unidades que la lista marcaba "Disponible" en realidad ya tienen comisión pagada. Alcance: ${scopeData().label}.`}</p>
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     ${resumenes.map(r=>`
       <div class="card kpi-card hero">
@@ -2965,7 +2973,7 @@ function t1PanelContent(r){
       <div><b>Tipología:</b> ${u.tp||"—"}</div>
       <div><b>Superficie:</b> ${u.m2?u.m2+" m²":"—"}</div>
       ${precio ? `<div><b>Precio de lista:</b> ${precio}</div>` : ""}
-      ${u.cor ? `<div style="margin-top:6px;">Comisión ya pagada (corregido de Disponible a Vendido)</div>` : ""}
+      ${u.cor && !esPerfilVentas() ? `<div style="margin-top:6px;">Comisión ya pagada (corregido de Disponible a Vendido)</div>` : ""}
     </div>
     ${venta ? `
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line);">
@@ -3035,7 +3043,7 @@ function pageVentasCobranza(){
   const totalSaldo = resumenes.reduce((s,r)=>s+r.saldo,0);
   const chartRows = resumenes.map(r=>({n:r.label, c:r.contratado, p:r.cobrado}));
   return `
-  <p class="section-sub" style="margin-top:0;">Cobranza real por cliente y unidad — alcance: ${scopeData().label}, corte al ${VENTAS_CORTE}. Fuente: lista de ventas actualizada (no inferida de comisiones).</p>
+  <p class="section-sub" style="margin-top:0;">Cobranza real por cliente y unidad — alcance: ${scopeData().label}, corte al ${VENTAS_CORTE}. Fuente: lista de ventas actualizada${esPerfilVentas() ? "" : " (no inferida de comisiones)"}.</p>
 
   <div class="grid grid-kpi" style="margin-bottom:24px;">
     <div class="card kpi-card">
@@ -3083,15 +3091,16 @@ function pageVentasCobranza(){
   `;
 }
 function pageVentas(){
+  if(esPerfilVentas() && ventasTab==="comisiones") ventasTab = "resumen";
   return `
   <h2 class="section-title" style="margin-top:0;">Ventas</h2>
-  <p class="section-sub">Comisiones de venta e inventario disponible.</p>
+  <p class="section-sub">${esPerfilVentas() ? "Inventario disponible y cobranza." : "Comisiones de venta e inventario disponible."}</p>
   <div class="filter-row" style="margin-bottom:20px;">
     <button class="galcat-opt ${ventasTab==="resumen"?"active":""}" data-ventastab="resumen">Resumen</button>
     <button class="galcat-opt ${ventasTab==="inventario"?"active":""}" data-ventastab="inventario">Inventario</button>
     <button class="galcat-opt ${ventasTab==="cobranza"?"active":""}" data-ventastab="cobranza">Contratos/Cobranza</button>
     <button class="galcat-opt ${ventasTab==="corte1"?"active":""}" data-ventastab="corte1">Corte Torre 1</button>
-    <button class="galcat-opt ${ventasTab==="comisiones"?"active":""}" data-ventastab="comisiones">Comisiones por departamento</button>
+    ${esPerfilVentas() ? "" : `<button class="galcat-opt ${ventasTab==="comisiones"?"active":""}" data-ventastab="comisiones">Comisiones por departamento</button>`}
   </div>
   ${ventasTab==="comisiones" ? pageVentasComisiones() : ventasTab==="inventario" ? pageVentasInventario() : ventasTab==="cobranza" ? pageVentasCobranza() : ventasTab==="corte1" ? pageCorteT1() : pageVentasResumen()}
   `;
@@ -3354,21 +3363,25 @@ function renderSidebar(){
   // Etapa 1 = todo lo que entra en Control de Pagos salvo Torre 3 (t1+t2+amenidades+compartido+general+calidad).
   const pagadoDe = k => (PAGOS_REAL[k] ? PAGOS_REAL[k].total : 0);
   const pagadoEtapa1 = PAGOS_CAT_MAIN.concat(PAGOS_CAT_CHICO_INCLUIDO).reduce((s,k)=>s+pagadoDe(k), 0);
-  const mdp = n => fmtMXN(n, true);
+  // El perfil de ventas no ve pagado ni % de avance de obra, solo cambia de alcance.
+  const mdp = n => esPerfilVentas() ? "" : fmtMXN(n, true);
+  if(esPerfilVentas()) [etapa1,t1,t2,t3].forEach(t=>{ t.pct = null; });
   document.getElementById("torreSwitch").innerHTML = `
     <div class="label">Alcance</div>
     <button class="torre-opt torre-opt-main ${etapa1.id===currentScope?'active':''}" data-torre="${etapa1.id}">
-      <span>${etapa1.label}</span><span class="pct-wrap"><span class="pct">${etapa1.pct}%</span><span class="mdp">${mdp(pagadoEtapa1)}</span></span>
+      <span>${etapa1.label}</span><span class="pct-wrap">${etapa1.pct==null?"":`<span class="pct">${etapa1.pct}%</span>`}<span class="mdp">${mdp(pagadoEtapa1)}</span></span>
     </button>
     <div class="torre-sub">
-      <button class="torre-opt torre-opt-sub ${t1.id===currentScope?'active':''}" data-torre="${t1.id}"><span>${t1.label}</span><span class="pct-wrap"><span class="pct">${t1.pct}%</span><span class="mdp">${mdp(pagadoDe("t1"))}</span></span></button>
-      <button class="torre-opt torre-opt-sub ${t2.id===currentScope?'active':''}" data-torre="${t2.id}"><span>${t2.label}</span><span class="pct-wrap"><span class="pct">${t2.pct}%</span><span class="mdp">${mdp(pagadoDe("t2"))}</span></span></button>
-      <button class="torre-opt torre-opt-sub" data-goto="presupuesto" data-goto-pagos-drill="amenidades"><span>Amenidades</span><span class="pct-wrap"><span class="mdp">${mdp(pagadoDe("amenidades"))}</span></span></button>
+      <button class="torre-opt torre-opt-sub ${t1.id===currentScope?'active':''}" data-torre="${t1.id}"><span>${t1.label}</span><span class="pct-wrap">${t1.pct==null?"":`<span class="pct">${t1.pct}%</span>`}<span class="mdp">${mdp(pagadoDe("t1"))}</span></span></button>
+      <button class="torre-opt torre-opt-sub ${t2.id===currentScope?'active':''}" data-torre="${t2.id}"><span>${t2.label}</span><span class="pct-wrap">${t2.pct==null?"":`<span class="pct">${t2.pct}%</span>`}<span class="mdp">${mdp(pagadoDe("t2"))}</span></span></button>
+      ${esPerfilVentas() ? "" : `<button class="torre-opt torre-opt-sub" data-goto="presupuesto" data-goto-pagos-drill="amenidades"><span>Amenidades</span><span class="pct-wrap"><span class="mdp">${mdp(pagadoDe("amenidades"))}</span></span></button>`}
     </div>
     <button class="torre-opt torre-opt-main ${t3.id===currentScope?'active':''}" data-torre="${t3.id}">
-      <span>${t3.label}</span><span class="pct-wrap"><span class="pct">${t3.pct}%</span><span class="mdp">${mdp(pagadoDe("t3"))}</span></span>
+      <span>${t3.label}</span><span class="pct-wrap">${t3.pct==null?"":`<span class="pct">${t3.pct}%</span>`}<span class="mdp">${mdp(pagadoDe("t3"))}</span></span>
     </button>`;
-  document.getElementById("primaryNav").innerHTML = NAV_ITEMS.map(n=>`
+  document.querySelector(".role-badge").lastChild.textContent = esPerfilVentas() ? "Vista de Ventas" : "Vista de Socio";
+  const navItems = esPerfilVentas() ? NAV_ITEMS.filter(n=>PERFIL_VENTAS_PAGINAS.includes(n.id)) : NAV_ITEMS;
+  document.getElementById("primaryNav").innerHTML = navItems.map(n=>`
     <button class="nav-item ${n.id===currentPage?'active':''}" data-page="${n.id}">${ICONS[n.icon]}<span>${n.label}</span></button>`).join("");
   document.querySelectorAll(".torre-opt[data-torre]").forEach(b=>b.addEventListener("click",()=>{currentScope=b.dataset.torre; coDrill=null; renderAll(); closeSidebarMobile();}));
   document.querySelectorAll(".torre-opt[data-goto]").forEach(b=>b.addEventListener("click",()=>{
@@ -3819,30 +3832,39 @@ async function bootstrapData(codigo){
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { "x-codigo-acceso": codigo } },
     });
+    const perfilRes = await sb.rpc("codigo_perfil");
+    if(perfilRes.error) throw new Error(perfilRes.error.message);
+    PERFIL = perfilRes.data || "completo";
+    // Tablas que el perfil de ventas sí puede leer; las demás ni se piden (Supabase las niega igual).
+    const TABLAS_VENTAS = ["proyecto","torres","ventas","unidades_inventario"];
+    const traer = (table, orderCol) =>
+      (esPerfilVentas() && !TABLAS_VENTAS.includes(table)) ? Promise.resolve([]) : fetchAll(sb, table, orderCol);
     const [
       proyectoRows, torresRows, partidasRows, alcancesRows,
       hitosRows, riesgosRows, actividadRows, semanasRows,
       nodosRows, pagosRows, comisionesRows, ventasRows, inventarioRows,
     ] = await Promise.all([
-      fetchAll(sb, "proyecto"),
-      fetchAll(sb, "torres"),
-      fetchAll(sb, "catalogo_partidas", "idx"),
-      fetchAll(sb, "alcances_torre"),
-      fetchAll(sb, "hitos", "id"),
-      fetchAll(sb, "riesgos", "id"),
-      fetchAll(sb, "actividad_destacada", "id"),
-      fetchAll(sb, "notas_semanales", "id"),
-      fetchAll(sb, "nodos_presupuesto"),
-      fetchAll(sb, "pagos", "id"),
-      fetchAll(sb, "comisiones_venta", "id"),
-      fetchAll(sb, "ventas", "id"),
-      fetchAll(sb, "unidades_inventario", "id"),
+      traer("proyecto"),
+      traer("torres"),
+      traer("catalogo_partidas", "idx"),
+      traer("alcances_torre"),
+      traer("hitos", "id"),
+      traer("riesgos", "id"),
+      traer("actividad_destacada", "id"),
+      traer("notas_semanales", "id"),
+      traer("nodos_presupuesto"),
+      traer("pagos", "id"),
+      traer("comisiones_venta", "id"),
+      traer("ventas", "id"),
+      traer("unidades_inventario", "id"),
     ]);
 
     PROYECTO = buildProyecto(proyectoRows);
     TORRES = buildTorres(torresRows);
     PARTIDA_NOMBRES = buildPartidaNombres(partidasRows);
-    SCOPES = buildScopes(alcancesRows);
+    SCOPES = esPerfilVentas()
+      ? Object.fromEntries(TORRES.map(t=>[t.id, {label:t.label}]))  // solo etiquetas, sin datos financieros
+      : buildScopes(alcancesRows);
     HITOS = buildHitos(hitosRows);
     RIESGOS = buildRiesgos(riesgosRows);
     ACTIVIDAD = buildActividad(actividadRows);
@@ -3857,6 +3879,7 @@ async function bootstrapData(codigo){
     INVENTARIO_REAL = buildInventarioReal(inventarioRows);
 
     if(location.hash === "#no-palm") currentPage = "nopalm"; // página oculta, no está en el menú
+    if(esPerfilVentas() && !PERFIL_VENTAS_PAGINAS.includes(currentPage)) currentPage = "ventas";
 
     renderSidebar();
     renderAll();

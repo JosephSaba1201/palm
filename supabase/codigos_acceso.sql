@@ -14,6 +14,8 @@
 --   update privado.codigos_acceso set activo = false where codigo = 'ABCD2345';
 --   -- Acceso temporal
 --   insert into privado.codigos_acceso (codigo, nombre, expira) values ('XYZ98765', 'Visita', now() + interval '7 days');
+--   -- Acceso de ventas (solo Ventas sin comisiones + Galería)
+--   insert into privado.codigos_acceso (codigo, nombre, perfil) values ('VENTAS', 'Equipo de ventas', 'ventas');
 --   -- Ver quién ha entrado
 --   select nombre, codigo, activo, usos, ultimo_uso from privado.codigos_acceso order by ultimo_uso desc nulls last;
 
@@ -22,7 +24,7 @@ create schema if not exists privado;
 revoke all on schema privado from public, anon, authenticated;
 
 create table if not exists privado.codigos_acceso (
-  codigo     text primary key check (codigo = upper(btrim(codigo)) and length(codigo) >= 6),
+  codigo     text primary key check (codigo = upper(btrim(codigo)) and length(codigo) >= 4),
   nombre     text not null,
   activo     boolean not null default true,
   expira     timestamptz,
@@ -99,3 +101,43 @@ begin
   end loop;
 end;
 $$;
+
+-- ---------- Paso 3: perfiles por código ----------
+-- 'completo' (socio) lee todo; 'ventas' solo lee proyecto, torres, ventas e inventario.
+alter table privado.codigos_acceso add column if not exists perfil text not null default 'completo'
+  check (perfil in ('completo','ventas'));
+
+create or replace function public.codigo_perfil()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select c.perfil
+  from privado.codigos_acceso c
+  where c.codigo = upper(btrim(coalesce(
+          nullif(current_setting('request.headers', true), '')::json ->> 'x-codigo-acceso', '')))
+    and c.activo
+    and (c.expira is null or c.expira > now());
+$$;
+revoke all on function public.codigo_perfil() from public;
+grant execute on function public.codigo_perfil() to anon, authenticated;
+
+-- Tablas que también ve el perfil de ventas
+alter policy "lectura con codigo" on public.proyecto            using ((select public.codigo_perfil()) in ('completo','ventas'));
+alter policy "lectura con codigo" on public.torres              using ((select public.codigo_perfil()) in ('completo','ventas'));
+alter policy "lectura con codigo" on public.ventas              using ((select public.codigo_perfil()) in ('completo','ventas'));
+alter policy "lectura con codigo" on public.unidades_inventario using ((select public.codigo_perfil()) in ('completo','ventas'));
+-- Solo socio (completo)
+alter policy "lectura con codigo" on public.actividad_destacada    using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.alcances_torre         using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.catalogo_partidas      using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.categorias_presupuesto using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.comisiones_venta       using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.fotos                  using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.hitos                  using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.nodos_presupuesto      using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.notas_semanales        using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.pagos                  using ((select public.codigo_perfil()) = 'completo');
+alter policy "lectura con codigo" on public.riesgos                using ((select public.codigo_perfil()) = 'completo');
