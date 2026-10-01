@@ -370,6 +370,15 @@ td.name{text-align:left;font-weight:600;}
 .timeline-connector .line-r{left:50%;right:0;}
 .timeline-item:first-child .line-l,.timeline-item:last-child .line-r{background:transparent;}
 .timeline-date{font-size:11px;color:var(--ink-600);margin-top:2px;white-space:nowrap;}
+.facade-tl-wrap{overflow-x:auto;padding:16px 4px 12px;-webkit-overflow-scrolling:touch;}
+.facade-tl-track{position:relative;height:208px;}
+.facade-tl-axis{position:absolute;left:80px;right:80px;top:166px;height:2px;background:var(--line-strong);}
+.facade-tl-item{position:absolute;top:0;width:160px;margin-left:-80px;display:flex;flex-direction:column;align-items:center;text-decoration:none;color:inherit;}
+.facade-tl-thumb{width:160px;height:160px;border-radius:14px;overflow:hidden;border:2px solid var(--surface-raised);outline:1px solid var(--line);box-shadow:var(--shadow-md);position:relative;transition:transform .15s ease;}
+.facade-tl-item:hover .facade-tl-thumb{transform:scale(1.04);}
+.facade-tl-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.facade-tl-dot{width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--surface-raised);margin-top:4px;}
+.facade-tl-date{font-size:12px;font-weight:600;color:var(--ink-600);margin-top:5px;white-space:nowrap;}
 
 /* -------- budget tree (presupuesto / control de obra) -------- */
 .budget-tree{padding:6px 14px;}
@@ -717,20 +726,40 @@ function renderComparadorFachadas(){
       </div>
     </div>`).join("");
 }
+// Posiciona cada foto a lo largo del eje proporcional a los días reales transcurridos
+// desde la toma anterior (no a espacios iguales), para que un hueco de 6 meses se vea
+// más grande que uno de 3 semanas. PX_POR_DIA controla la escala; MIN/MAX_GAP evitan
+// que fotos muy juntas se encimen o que un hueco enorme estire demasiado la tira.
+function layoutFachadaTimeline(fotos){
+  const PX_POR_DIA = 1.6, MIN_GAP = 190, MAX_GAP = 320, THUMB = 160;
+  let x = 0;
+  const items = fotos.map((g,i)=>{
+    if(i>0){
+      const dias = (new Date(fotos[i].iso) - new Date(fotos[i-1].iso)) / 86400000;
+      x += Math.min(MAX_GAP, Math.max(MIN_GAP, dias*PX_POR_DIA));
+    }
+    return {...g, x};
+  });
+  return {items, width: x + THUMB + 80};
+}
 function renderTimelinesFachada(){
-  const item = g => `
-    <a class="timeline-item" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
-      <div class="timeline-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
-      <div class="timeline-connector"><span class="line-l"></span><span class="dot"></span><span class="line-r"></span></div>
-      <div class="timeline-date">${g.fecha}</div>
-    </a>`;
   return ANGULOS_FACHADA.map(a=>{
     const fotos = fotosPorAngulo(a.id);
     if(fotos.length<2) return "";
+    const {items, width} = layoutFachadaTimeline(fotos);
+    const item = g => `
+      <a class="facade-tl-item" style="left:${g.x}px" href="${FOTOS_BASE}/${encodeURIComponent(g.file)}" target="_blank" rel="noopener" data-tip="<b>${g.fecha}</b>${g.cap}">
+        <div class="facade-tl-thumb"><img src="${FOTOS_BASE}/thumbs/${encodeURIComponent(g.file)}" loading="lazy" alt="${g.cap}">${numTag(g)}</div>
+        <span class="facade-tl-dot"></span>
+        <span class="facade-tl-date">${g.fecha}</span>
+      </a>`;
     return `
   <div class="card" style="margin-bottom:24px;">
     <div class="card-head"><h3>Línea de tiempo · ${a.label}</h3><span class="hint">${fotos.length} tomas, orden cronológico</span></div>
-    <div class="timeline-strip">${fotos.map(item).join("")}</div>
+    <div class="facade-tl-wrap"><div class="facade-tl-track" style="width:${width}px;">
+      <div class="facade-tl-axis"></div>
+      ${items.map(item).join("")}
+    </div></div>
   </div>`;
   }).join("");
 }
