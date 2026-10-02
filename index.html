@@ -787,7 +787,7 @@ let currentPage = "resumen";
 // Perfil del código de acceso (privado.codigos_acceso.perfil). "ventas" solo ve Ventas
 // (sin comisiones) y Galería; Supabase además le niega las tablas financieras.
 let PERFIL = "completo";
-const PERFIL_VENTAS_PAGINAS = ["ventas","galeria"];
+const PERFIL_VENTAS_PAGINAS = ["resumen","ventas","galeria"];
 const esPerfilVentas = () => PERFIL === "ventas";
 
 function scopeData(){ return SCOPES[currentScope] || SCOPES.consolidado; }
@@ -944,7 +944,59 @@ function topNWithOther(items, n){
 }
 
 /* ============================================================ PAGE: RESUMEN ============================================================ */
+// Resumen para el perfil de ventas: solo datos de ventas/cobranza (VENTAS_REAL) y fotos,
+// sin presupuesto, pagos ni comisiones.
+function pageResumenVentas(){
+  const {partidas, total} = ventasResumenPorEstatus();
+  const pct = v => total.valor ? 100*v/total.valor : 0;
+  const torresCob = ["t1","t2","t3"].map(id=>({id, label:(TORRES.find(x=>x.id===id)||{}).label||id, ...cobranzaResumenTorre(id)}));
+  const etapa1 = torresCob.filter(r=>r.id!=="t3").reduce((a,r)=>({contratado:a.contratado+r.contratado, cobrado:a.cobrado+r.cobrado, saldo:a.saldo+r.saldo}), {contratado:0,cobrado:0,saldo:0});
+  const chartCobranza = torresCob.map(r=>({n:r.label, c:r.contratado, p:r.cobrado}));
+  return `
+  <h2 class="section-title" style="margin-top:0;">Panorama de ventas</h2>
+  <p class="section-sub">Alcance: ${scopeData().label}. Inventario, contratos y cobranza, corte al ${VENTAS_CORTE}.</p>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Valor de venta del proyecto</h3><span class="hint">${total.unidades} unidades</span></div>
+    <div style="margin:14px 0 4px;">
+      <span style="font-family:var(--font-display);font-size:34px;color:var(--accent-ink);font-weight:600;">${fmtMXN(total.valor,true)}</span>
+    </div>
+    <div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line);margin:12px 0 18px;">
+      ${partidas.map(p=>`<div style="width:${pct(p.valor)}%;background:${p.color};" title="${p.label}"></div>`).join("")}
+    </div>
+    <div class="grid grid-kpi">
+      ${partidas.map(p=>`
+        <div class="card kpi-card" style="box-shadow:none;background:var(--page);">
+          <span class="label" style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:${p.color};display:inline-block;flex:none;"></span>${p.label}</span>
+          <span class="value" style="font-size:22px;">${fmtMXN(p.valor,true)}</span>
+          <span class="foot">${p.unidades} unidad${p.unidades===1?"":"es"} · ${fmtPct(pct(p.valor))}</span>
+        </div>`).join("")}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-head"><h3>Cobranza por Torre — % cobrado de contratos firmados</h3><span class="hint">Corte cobranza: ${VENTAS_CORTE}</span></div>
+    <div class="chart-box">${svgPresupuestoVsReal(chartCobranza, 900, "Contrato firmado", "Cobrado")}</div>
+    <div class="qb-breakdown" style="margin-top:2px;">
+      ${torresCob.map(r=>`
+        <div class="qb-row">
+          <div><div class="qb-cat">${r.label}</div><div class="qb-items">Contrato firmado ${fmtMXN(r.contratado,true)} · Cobrado ${fmtMXN(r.cobrado,true)} (${fmtPct(r.contratado?100*r.cobrado/r.contratado:0)}) · ${r.unidadesContrato} de ${r.unidadesTotal} unid.</div></div>
+          <div class="qb-nums tabular"><b>${fmtMXN(r.saldo,true)}</b><br><span class="foot">saldo a escritura</span></div>
+        </div>`).join("")}
+      <div class="qb-row" style="border-top:1px solid var(--line);padding-top:10px;margin-top:2px;">
+        <div><div class="qb-cat">Etapa 1 (Torre 1 + Torre 2)</div><div class="qb-items">Contrato firmado ${fmtMXN(etapa1.contratado,true)} · Cobrado ${fmtMXN(etapa1.cobrado,true)} (${fmtPct(etapa1.contratado?100*etapa1.cobrado/etapa1.contratado:0)})</div></div>
+        <div class="qb-nums tabular"><b>${fmtMXN(etapa1.saldo,true)}</b><br><span class="foot">saldo a escritura</span></div>
+      </div>
+    </div>
+  </div>
+
+  ${renderComparadorFachadas()}
+  ${renderTimelinesFachada()}
+  `;
+}
+
 function pageResumen(){
+  if(esPerfilVentas()) return pageResumenVentas();
   const s = scopeData();
   const fin = analisisFinancieroReal();
   const flags = flagsFinancierosReal();
