@@ -689,11 +689,11 @@ const GALERIA_RAW = [
   {file:"40_2026-09-06.jpeg", iso:"2026-09-06", categoria:"Estructura", cap:"Detalle de estructura de concreto de Torre 3, junto a torre vecina terminada."},
   {file:"41_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista aérea desde la playa, fachada frontal, Torres 1 y 2 y zona de amenidades.", angulo:"frontal"},
   {file:"42_2026-09-16.jpg", iso:"2026-09-16", categoria:"General", cap:"Vista aérea, fachada posterior, Torres 1 y 2.", angulo:"posterior"},
-  {file:"43_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Torres 1 y 2 con luz de atardecer, playa y zona de Torre 3 en excavación."},
+  {file:"43_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Torres 1 y 2 con luz de atardecer, playa y zona de Torre 3 en excavación.", angulo:"posterior"},
   {file:"44_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Fachada frontal de las torres, hacia el campo de golf: Torre 1 terminada y Torre 2 en obra.", angulo:"frontal"},
-  {file:"45_2026-09-26.jpg", iso:"2026-09-26", categoria:"Amenidades", cap:"Amenidades terminadas: club, juegos infantiles y albercas."},
-  {file:"46_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Torres 1 y 2 desde la avenida, paneles azules en Torre 2."},
-  {file:"47_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Vista aérea amplia de ambas torres, amenidades y playa."},
+  {file:"45_2026-09-26.jpg", iso:"2026-09-26", categoria:"Amenidades", cap:"Amenidades terminadas: club, juegos infantiles y albercas.", angulo:"posterior"},
+  {file:"46_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Torres 1 y 2 desde la avenida, paneles azules en Torre 2.", angulo:"posterior"},
+  {file:"47_2026-09-26.jpg", iso:"2026-09-26", categoria:"General", cap:"Vista aérea amplia de ambas torres, amenidades y playa.", angulo:"frontal"},
 
 ];
 const GALERIA = GALERIA_RAW
@@ -709,7 +709,9 @@ const ANGULOS_FACHADA = [
   {id:"posterior", label:"Fachada posterior"},
 ];
 function fotosPorAngulo(id){
-  return GALERIA.filter(g=>g.angulo===id).slice().sort((a,b)=>a.iso<b.iso?-1:1);
+  // Empata por fecha usando el nombre de archivo (su número de orden) como desempate,
+  // para que dos fotos del mismo día no queden en orden indefinido.
+  return GALERIA.filter(g=>g.angulo===id).slice().sort((a,b)=> a.iso===b.iso ? (a.file<b.file?-1:1) : (a.iso<b.iso?-1:1));
 }
 function comparadorFachadas(){
   return ANGULOS_FACHADA.map(a=>{
